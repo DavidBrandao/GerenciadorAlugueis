@@ -28,16 +28,48 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
     return { error: "Data fim deve ser posterior a data inicio" };
   }
 
-  // Check for existing active rental
-  const { data: aluguelExistente } = await supabase
-    .from("alugueis")
-    .select("id")
-    .eq("imovel_id", imovelId)
-    .eq("status", "ativo")
+  // Fetch imovel type to determine rental rules
+  const { data: imovel } = await supabase
+    .from("imoveis")
+    .select("tipo")
+    .eq("id", imovelId)
     .single();
 
-  if (aluguelExistente) {
-    return { error: "Este imovel ja possui um aluguel ativo" };
+  if (!imovel) {
+    return { error: "Imovel nao encontrado" };
+  }
+
+  if (imovel.tipo === "sitio") {
+    // Sitio allows multiple temporada rentals if no date overlap
+    const { data: alugueisAtivos } = await supabase
+      .from("alugueis")
+      .select("id, data_inicio, data_fim")
+      .eq("imovel_id", imovelId)
+      .eq("status", "ativo");
+
+    if (alugueisAtivos) {
+      for (const existente of alugueisAtivos) {
+        const overlap =
+          dataInicio <= existente.data_fim && dataFim >= existente.data_inicio;
+        if (overlap) {
+          return {
+            error: `Conflito de datas com aluguel existente (${existente.data_inicio} a ${existente.data_fim})`,
+          };
+        }
+      }
+    }
+  } else {
+    // Casa/ponto_comercial: only one active rental allowed
+    const { data: aluguelExistente } = await supabase
+      .from("alugueis")
+      .select("id")
+      .eq("imovel_id", imovelId)
+      .eq("status", "ativo")
+      .single();
+
+    if (aluguelExistente) {
+      return { error: "Este imovel ja possui um aluguel ativo" };
+    }
   }
 
   // Find or create inquilino
