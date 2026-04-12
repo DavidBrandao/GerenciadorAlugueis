@@ -90,6 +90,20 @@ export async function editarAluguel(
   revalidatePath("/dashboard");
 }
 
+export async function quitarAluguel(aluguelId: string, imovelId: string) {
+  const supabase = await createClient();
+  const hoje = new Date().toISOString().split("T")[0];
+
+  await supabase
+    .from("pagamentos")
+    .update({ pago: true, data_pagamento: hoje })
+    .eq("aluguel_id", aluguelId)
+    .eq("pago", false);
+
+  revalidatePath(`/imoveis/${imovelId}`);
+  revalidatePath("/dashboard");
+}
+
 export async function adicionarPagamento(
   aluguelId: string,
   valor: number,

@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronDown } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { cancelarAluguel, adicionarPagamento, togglePagamento } from "@/app/(app)/imoveis/[id]/actions";
+import { cancelarAluguel, adicionarPagamento, togglePagamento, quitarAluguel } from "@/app/(app)/imoveis/[id]/actions";
 import type { AluguelComInquilino, Pagamento } from "@/lib/types";
 
 interface AlugueisMesProps {
@@ -112,7 +112,12 @@ function PagamentosSection({
   function handleQuitarPagamento() {
     if (!restante) return;
     startQuitarTransition(async () => {
-      await togglePagamento(restante.id, !restante.pago, imovelId);
+      if (!restante.pago) {
+        // Quitar paga todos os pendentes (sinal + restante)
+        await quitarAluguel(aluguel.id, imovelId);
+      } else {
+        await togglePagamento(restante.id, false, imovelId);
+      }
     });
   }
 
