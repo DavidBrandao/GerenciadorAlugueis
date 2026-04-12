@@ -27,3 +27,34 @@ export async function toggleSinal(aluguelId: string, sinalPago: boolean, imovelI
 
   revalidatePath(`/imoveis/${imovelId}`);
 }
+
+export async function cancelarAluguel(aluguelId: string, imovelId: string) {
+  const supabase = await createClient();
+
+  await supabase
+    .from("alugueis")
+    .update({ status: "cancelado" })
+    .eq("id", aluguelId);
+
+  revalidatePath(`/imoveis/${imovelId}`);
+  revalidatePath("/dashboard");
+}
+
+export async function adicionarPagamento(
+  aluguelId: string,
+  valor: number,
+  imovelId: string
+) {
+  const supabase = await createClient();
+
+  await supabase.from("pagamentos").insert({
+    aluguel_id: aluguelId,
+    mes_referencia: new Date().toISOString().split("T")[0],
+    valor,
+    pago: true,
+    data_pagamento: new Date().toISOString().split("T")[0],
+  });
+
+  revalidatePath(`/imoveis/${imovelId}`);
+  revalidatePath("/dashboard");
+}
