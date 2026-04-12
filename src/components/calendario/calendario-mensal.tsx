@@ -30,6 +30,10 @@ export interface CalendarioMensalProps {
   feriados: Feriado[];
   onPrevMonth?: () => void;
   onNextMonth?: () => void;
+  // Interactive props for date range selection
+  selectedRange?: { start: Date | null; end: Date | null };
+  onDayClick?: (date: Date) => void;
+  disabledDates?: (date: Date) => boolean;
 }
 
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -82,6 +86,9 @@ export function CalendarioMensal({
   feriados,
   onPrevMonth,
   onNextMonth,
+  selectedRange,
+  onDayClick,
+  disabledDates,
 }: CalendarioMensalProps) {
   const totalDays = getDaysInMonth(ano, mes);
   const firstDay = getFirstDayOfWeek(ano, mes);
@@ -136,6 +143,19 @@ export function CalendarioMensal({
     cells.push(d);
   }
 
+  function isDayInSelectedRange(day: number): "start" | "end" | "middle" | null {
+    if (!selectedRange?.start) return null;
+    const date = new Date(ano, mes, day);
+    const start = selectedRange.start;
+    const end = selectedRange.end;
+
+    if (start && date.getTime() === start.getTime()) return "start";
+    if (end && date.getTime() === end.getTime()) return "end";
+    if (start && end && date > start && date < end) return "middle";
+    if (start && !end && date.getTime() === start.getTime()) return "start";
+    return null;
+  }
+
   return (
     <div className="w-full max-w-md mx-auto">
       {/* Header with navigation */}
@@ -170,10 +190,43 @@ export function CalendarioMensal({
 
             const info = dayInfoMap.get(day)!;
             const hasTooltip = info.tooltipLines.length > 0;
+            const date = new Date(ano, mes, day);
+            const isDisabled = disabledDates?.(date) ?? false;
+            const rangePos = isDayInSelectedRange(day);
+            const isInteractive = !!onDayClick && !isDisabled;
+
+            // Build classes
+            let selectionClasses = "";
+            if (rangePos === "start" || rangePos === "end") {
+              selectionClasses = "bg-primary text-primary-foreground";
+            } else if (rangePos === "middle") {
+              selectionClasses = "bg-primary/20";
+            }
+
+            const disabledClasses = isDisabled
+              ? "opacity-40 cursor-not-allowed"
+              : "";
+
+            const interactiveClasses = isInteractive
+              ? "cursor-pointer hover:ring-2 hover:ring-primary/50"
+              : "cursor-default hover:ring-1 hover:ring-border";
 
             const cellContent = (
               <div
-                className={`relative aspect-square flex items-center justify-center text-sm rounded-md cursor-default transition-colors hover:ring-1 hover:ring-border ${info.bg}`}
+                className={`relative aspect-square flex items-center justify-center text-sm rounded-md transition-colors ${info.bg} ${selectionClasses} ${disabledClasses} ${interactiveClasses}`}
+                onClick={isInteractive ? () => onDayClick(date) : undefined}
+                role={isInteractive ? "button" : undefined}
+                tabIndex={isInteractive ? 0 : undefined}
+                onKeyDown={
+                  isInteractive
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onDayClick(date);
+                        }
+                      }
+                    : undefined
+                }
               >
                 {day}
                 {info.feriado && (
