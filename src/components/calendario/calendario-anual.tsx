@@ -55,7 +55,7 @@ function isDayPaid(date: Date, aluguel: Aluguel): boolean {
     return aluguel.pagamentos.length > 0 && aluguel.pagamentos.every((p) => p.pago);
   }
   const ym = formatYearMonth(date);
-  const pagamento = aluguel.pagamentos.find((p) => p.mes_referencia === ym);
+  const pagamento = aluguel.pagamentos.find((p) => p.mes_referencia.startsWith(ym));
   return pagamento?.pago ?? false;
 }
 

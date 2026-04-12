@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatCurrency } from "@/lib/format";
 import type { Pagamento } from "@/lib/types";
 import { togglePagamento } from "@/app/(app)/imoveis/[id]/actions";
 import { useTransition } from "react";
@@ -19,13 +20,6 @@ interface PagamentosTableProps {
   aluguelTipo: "mensal" | "temporada";
   aluguelValorSinal: number | null;
   imovelId: string;
-}
-
-function formatCurrency(value: number): string {
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
 }
 
 function formatMesReferencia(

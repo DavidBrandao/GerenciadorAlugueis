@@ -22,7 +22,7 @@ CREATE TABLE imoveis (
 CREATE TABLE inquilinos (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   nome_completo TEXT NOT NULL,
-  cpf TEXT NOT NULL,
+  cpf TEXT NOT NULL UNIQUE,
   rg TEXT NOT NULL,
   endereco TEXT NOT NULL,
   telefone TEXT NOT NULL,

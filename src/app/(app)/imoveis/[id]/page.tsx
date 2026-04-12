@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { getFeriados } from "@/lib/feriados";
 import { Calendario } from "@/components/calendario/calendario";
 import { AluguelInfo } from "@/components/aluguel-info";
 import { PagamentosTable } from "@/components/pagamentos-table";
@@ -63,9 +62,6 @@ export default async function ImovelPage({ params }: PageProps) {
 
   const historico = (historicoData as AluguelComInquilino[]) ?? [];
 
-  // Get feriados for current year
-  const feriados = getFeriados(new Date().getFullYear());
-
   // Build alugueis data for calendar
   const calendarAlugueis = [];
   if (aluguelAtivo) {
@@ -93,7 +89,7 @@ export default async function ImovelPage({ params }: PageProps) {
         <p className="text-muted-foreground">{typedImovel.descricao}</p>
       )}
 
-      <Calendario alugueis={calendarAlugueis} feriados={feriados} />
+      <Calendario alugueis={calendarAlugueis} />
 
       <Separator />
 

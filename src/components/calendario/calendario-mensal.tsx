@@ -65,7 +65,7 @@ function isDayPaid(date: Date, aluguel: Aluguel): boolean {
   }
   // mensal: check if the payment for this month is paid
   const ym = formatYearMonth(date);
-  const pagamento = aluguel.pagamentos.find((p) => p.mes_referencia === ym);
+  const pagamento = aluguel.pagamentos.find((p) => p.mes_referencia.startsWith(ym));
   return pagamento?.pago ?? false;
 }
 
@@ -188,7 +188,7 @@ export function CalendarioMensal({
 
             return (
               <Tooltip key={day}>
-                <TooltipTrigger render={<div />}>
+                <TooltipTrigger>
                   {cellContent}
                 </TooltipTrigger>
                 <TooltipContent>

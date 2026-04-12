@@ -35,7 +35,11 @@ export default function NovoAluguelPage() {
       const formData = new FormData(e.currentTarget);
       formData.set("tipo", tipo);
       formData.set("tem_sinal", temSinal ? "true" : "false");
-      await criarAluguel(imovelId, formData);
+      const result = await criarAluguel(imovelId, formData);
+      if (result?.error) {
+        setError(result.error);
+        setIsSubmitting(false);
+      }
     } catch (err) {
       // redirect() throws a NEXT_REDIRECT error, which is expected
       if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {

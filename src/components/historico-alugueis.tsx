@@ -8,22 +8,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { formatCurrency, formatDate } from "@/lib/format";
 import type { AluguelComInquilino } from "@/lib/types";
 
 interface HistoricoAlugueisProps {
   alugueis: AluguelComInquilino[];
-}
-
-function formatCurrency(value: number): string {
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-}
-
-function formatDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split("-");
-  return `${day}/${month}/${year}`;
 }
 
 function statusBadge(status: string) {

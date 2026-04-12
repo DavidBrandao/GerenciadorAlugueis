@@ -23,6 +23,23 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
     ? parseFloat(formData.get("valor_sinal") as string)
     : null;
 
+  // Validate dates
+  if (dataFim <= dataInicio) {
+    return { error: "Data fim deve ser posterior a data inicio" };
+  }
+
+  // Check for existing active rental
+  const { data: aluguelExistente } = await supabase
+    .from("alugueis")
+    .select("id")
+    .eq("imovel_id", imovelId)
+    .eq("status", "ativo")
+    .single();
+
+  if (aluguelExistente) {
+    return { error: "Este imovel ja possui um aluguel ativo" };
+  }
+
   // Find or create inquilino
   let inquilinoId: string;
   const { data: existing } = await supabase
