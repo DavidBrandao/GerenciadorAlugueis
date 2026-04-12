@@ -28,6 +28,7 @@ interface ImovelDetailClientProps {
     data_inicio: string;
     data_fim: string;
     tipo: "mensal" | "temporada";
+    inquilino_nome?: string;
     pagamentos: Array<{ mes_referencia: string; pago: boolean }>;
   }>;
   pagamentosSerializado: Record<string, Pagamento[]>;
@@ -103,6 +104,8 @@ export function ImovelDetailClient({
             aluguelTipo={aluguelAtivo.tipo}
             aluguelValorSinal={aluguelAtivo.valor_sinal}
             imovelId={imovel.id}
+            tipoImovel={imovel.tipo}
+            aluguelId={aluguelAtivo.id}
           />
           <Dialog>
             <DialogTrigger
@@ -120,8 +123,8 @@ export function ImovelDetailClient({
               <DialogHeader>
                 <DialogTitle>Cancelar Aluguel</DialogTitle>
                 <DialogDescription>
-                  Tem certeza? O aluguel sera cancelado e as datas liberadas.
-                  Esta acao nao pode ser desfeita.
+                  Tem certeza? O aluguel será cancelado e as datas liberadas.
+                  Esta ação não pode ser desfeita.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>

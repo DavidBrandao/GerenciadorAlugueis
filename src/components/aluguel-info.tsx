@@ -86,8 +86,33 @@ export function AluguelInfo({ aluguel, imovelId, pagamentos }: AluguelInfoProps)
           )}
         </div>
 
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+          <div>
+            <span className="text-muted-foreground">CPF</span>
+            <p className="font-medium">{aluguel.inquilino.cpf}</p>
+          </div>
+          <div>
+            <span className="text-muted-foreground">RG</span>
+            <p className="font-medium">{aluguel.inquilino.rg}</p>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Telefone</span>
+            <p className="font-medium">{aluguel.inquilino.telefone}</p>
+          </div>
+          {aluguel.inquilino.email && (
+            <div>
+              <span className="text-muted-foreground">Email</span>
+              <p className="font-medium">{aluguel.inquilino.email}</p>
+            </div>
+          )}
+          <div className="col-span-2">
+            <span className="text-muted-foreground">Endereço</span>
+            <p className="font-medium">{aluguel.inquilino.endereco}</p>
+          </div>
+        </div>
+
         <div>
-          <span className="text-sm text-muted-foreground">Periodo</span>
+          <span className="text-sm text-muted-foreground">Período</span>
           <p className="font-medium">
             {formatDate(aluguel.data_inicio)} a {formatDate(aluguel.data_fim)}
           </p>
@@ -184,7 +209,7 @@ export function AluguelInfo({ aluguel, imovelId, pagamentos }: AluguelInfoProps)
           <>
             <Separator />
             <div>
-              <span className="text-sm text-muted-foreground">Observacoes</span>
+              <span className="text-sm text-muted-foreground">Observações</span>
               <p className="text-sm">{aluguel.observacoes}</p>
             </div>
           </>

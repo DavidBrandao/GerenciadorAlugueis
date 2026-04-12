@@ -128,41 +128,48 @@ function MesesGrid({
   aluguel: AluguelComInquilino;
   pagamentos: Pagamento[];
 }) {
-  const anoAtual = new Date().getFullYear();
   const inicio = new Date(aluguel.data_inicio + "T00:00:00");
   const fim = new Date(aluguel.data_fim + "T00:00:00");
 
+  // Build list of months in contract period
+  const meses: { mes: number; ano: number; ym: string; label: string }[] = [];
+  const current = new Date(inicio.getFullYear(), inicio.getMonth(), 1);
+  const lastMonth = new Date(fim.getFullYear(), fim.getMonth(), 1);
+
+  while (current <= lastMonth) {
+    const m = current.getMonth() + 1;
+    const y = current.getFullYear();
+    meses.push({
+      mes: m,
+      ano: y,
+      ym: `${y}-${String(m).padStart(2, "0")}`,
+      label: `${String(m).padStart(2, "0")}/${String(y).slice(2)}`,
+    });
+    current.setMonth(current.getMonth() + 1);
+  }
+
+  // Filter out fiança (valor_sinal record with mes_referencia = data_inicio and valor = sinal)
+  const mensalidades = pagamentos.filter((p) => {
+    if (aluguel.valor_sinal != null && p.valor === aluguel.valor_sinal && p.mes_referencia === aluguel.data_inicio) {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <div className="grid grid-cols-6 gap-1">
-      {Array.from({ length: 12 }, (_, i) => {
-        const mes = i + 1;
-        const ym = `${anoAtual}-${String(mes).padStart(2, "0")}`;
-        const primeiroDia = new Date(anoAtual, i, 1);
-        const ultimoDia = new Date(anoAtual, i + 1, 0);
-        const dentroContrato = primeiroDia <= fim && ultimoDia >= inicio;
-
-        if (!dentroContrato) {
-          return (
-            <div
-              key={mes}
-              className="flex items-center justify-center rounded text-xs font-medium h-7 bg-muted text-muted-foreground"
-            >
-              {mes}
-            </div>
-          );
-        }
-
-        const pagMes = pagamentos.find((p) => p.mes_referencia.startsWith(ym));
+      {meses.map(({ ym, label }) => {
+        const pagMes = mensalidades.find((p) => p.mes_referencia.startsWith(ym));
         const pago = pagMes?.pago ?? false;
 
         return (
           <div
-            key={mes}
+            key={ym}
             className={`flex items-center justify-center rounded text-xs font-bold h-7 text-white ${
               pago ? "bg-green-600" : "bg-red-500"
             }`}
           >
-            {mes}
+            {label}
           </div>
         );
       })}
@@ -186,12 +193,18 @@ function CasaContent({
         {aluguel.inquilino.nome_completo}
       </p>
       <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-sm">
-        <p className="text-muted-foreground">Inicio Contrato</p>
+        <p className="text-muted-foreground">Início Contrato</p>
         <p className="font-medium">{formatDate(aluguel.data_inicio)}</p>
         <p className="text-muted-foreground">Final Contrato</p>
         <p className="font-medium">{formatDate(aluguel.data_fim)}</p>
         <p className="text-muted-foreground">Valor Aluguel</p>
         <p className="font-medium">{formatCurrency(aluguel.valor_total)}</p>
+        {aluguel.valor_sinal != null && (
+          <>
+            <p className="text-muted-foreground">Fiança</p>
+            <p className="font-medium">{formatCurrency(aluguel.valor_sinal)}</p>
+          </>
+        )}
       </div>
       <MesesGrid aluguel={aluguel} pagamentos={pags} />
     </CardContent>
@@ -227,7 +240,7 @@ export function ImovelCard({
         badgeText = "Ocupado";
       } else {
         badgeVariant = "default";
-        badgeText = `${alugueisDoMes.length} ${alugueisDoMes.length === 1 ? "aluguel" : "alugueis"}`;
+        badgeText = `${alugueisDoMes.length} ${alugueisDoMes.length === 1 ? "aluguel" : "aluguéis"}`;
       }
     }
   } else {

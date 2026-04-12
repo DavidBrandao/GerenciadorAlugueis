@@ -81,10 +81,64 @@ export async function editarAluguel(
     .update({ nome_completo: nomeCompleto })
     .eq("id", inquilinoId);
 
+  // Get old valor to identify which pagamentos are mensalidades
+  const { data: aluguel } = await supabase
+    .from("alugueis")
+    .select("valor_total, valor_sinal")
+    .eq("id", aluguelId)
+    .single();
+
   await supabase
     .from("alugueis")
     .update({ valor_total: valorTotal })
     .eq("id", aluguelId);
+
+  // Update pending mensalidades (not fiança/sinal) to the new value
+  if (aluguel) {
+    const oldValor = aluguel.valor_total;
+    // Get pending pagamentos with the old mensal value
+    const { data: pendentes } = await supabase
+      .from("pagamentos")
+      .select("id, valor")
+      .eq("aluguel_id", aluguelId)
+      .eq("pago", false)
+      .eq("valor", oldValor);
+
+    if (pendentes && pendentes.length > 0) {
+      const ids = pendentes.map((p) => p.id);
+      await supabase
+        .from("pagamentos")
+        .update({ valor: valorTotal })
+        .in("id", ids);
+    }
+  }
+
+  revalidatePath(`/imoveis/${imovelId}`);
+  revalidatePath("/dashboard");
+}
+
+export async function pagarFianca(aluguelId: string, imovelId: string) {
+  const supabase = await createClient();
+  const hoje = new Date().toISOString().split("T")[0];
+
+  // Get all unpaid pagamentos for this aluguel, ordered by mes_referencia
+  const { data: pendentes } = await supabase
+    .from("pagamentos")
+    .select("id, mes_referencia, valor")
+    .eq("aluguel_id", aluguelId)
+    .eq("pago", false)
+    .order("mes_referencia")
+    .order("valor"); // sinal (lower valor) first
+
+  if (!pendentes || pendentes.length === 0) return;
+
+  // Pay the first two unpaid records (fiança + first mensalidade)
+  const toPay = pendentes.slice(0, 2).map((p) => p.id);
+
+  await supabase
+    .from("pagamentos")
+    .update({ pago: true, data_pagamento: hoje })
+    .in("id", toPay);
 
   revalidatePath(`/imoveis/${imovelId}`);
   revalidatePath("/dashboard");

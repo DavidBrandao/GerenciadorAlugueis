@@ -19,7 +19,7 @@ export function Header() {
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
         <div className="flex items-center gap-6">
           <Link href="/dashboard" className="text-lg font-semibold whitespace-nowrap">
-            <span className="hidden sm:inline">Gerenciador de Alugueis</span>
+            <span className="hidden sm:inline">Gerenciador de Aluguéis</span>
             <span className="sm:hidden">GerAlug</span>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-4">

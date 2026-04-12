@@ -25,7 +25,7 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
 
   // Validate dates
   if (dataFim <= dataInicio) {
-    return { error: "Data fim deve ser posterior a data inicio" };
+    return { error: "Data fim deve ser posterior à data início" };
   }
 
   // Fetch imovel type to determine rental rules
@@ -36,7 +36,7 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
     .single();
 
   if (!imovel) {
-    return { error: "Imovel nao encontrado" };
+    return { error: "Imóvel não encontrado" };
   }
 
   if (imovel.tipo === "sitio") {
@@ -68,7 +68,7 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
       .single();
 
     if (aluguelExistente) {
-      return { error: "Este imovel ja possui um aluguel ativo" };
+      return { error: "Este imóvel já possui um aluguel ativo" };
     }
   }
 
@@ -146,7 +146,16 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
       });
     }
   } else {
-    // mensal: one record per month
+    // mensal: fiança record if applicable, then one record per month
+    if (valorSinal) {
+      pagamentos.push({
+        aluguel_id: aluguel!.id,
+        mes_referencia: dataInicio,
+        valor: valorSinal,
+        pago: false,
+      });
+    }
+
     const start = new Date(dataInicio + "T00:00:00");
     const end = new Date(dataFim + "T00:00:00");
     const current = new Date(start.getFullYear(), start.getMonth(), 1);

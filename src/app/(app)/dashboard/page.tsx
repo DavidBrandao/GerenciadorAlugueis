@@ -44,7 +44,7 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Imoveis</h2>
+      <h2 className="text-2xl font-bold mb-6">Imóveis</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {(imoveis as Imovel[])?.map((imovel) => (
           <ImovelCard

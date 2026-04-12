@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gerenciador de Alugueis",
-  description: "Sistema de gerenciamento de alugueis",
+  title: "Gerenciador de Aluguéis",
+  description: "Sistema de gerenciamento de aluguéis",
 };
 
 export default function RootLayout({

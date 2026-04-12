@@ -74,6 +74,7 @@ export default async function ImovelPage({ params }: PageProps) {
     data_inicio: a.data_inicio,
     data_fim: a.data_fim,
     tipo: a.tipo,
+    inquilino_nome: a.inquilino.nome_completo,
     pagamentos: (pagamentosPorAluguel.get(a.id) ?? []).map((p) => ({
       mes_referencia: p.mes_referencia,
       pago: p.pago,
