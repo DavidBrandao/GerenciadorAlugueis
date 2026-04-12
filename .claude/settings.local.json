@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --yes)",
+      "Bash(rm -f package.json)",
+      "Read(//c/Projetos/**)",
+      "Bash(npx create-next-app@latest gerenciador-alugueis-temp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --yes)",
+      "Bash(npm install:*)",
+      "Bash(git commit:*)",
+      "Bash(npx shadcn@latest:*)"
+    ]
+  }
+}
