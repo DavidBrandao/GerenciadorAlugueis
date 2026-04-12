@@ -47,44 +47,162 @@ function getAlugueisDoMes(
   });
 }
 
-function PagamentoRow({
-  pagamento,
-  imovelId,
-}: {
-  pagamento: Pagamento;
-  imovelId: string;
-}) {
-  const [isPending, startTransition] = useTransition();
+function categorizePagamentos(
+  pagamentos: Pagamento[],
+  aluguel: AluguelComInquilino
+): {
+  sinal: Pagamento | null;
+  restante: Pagamento | null;
+  manuais: Pagamento[];
+} {
+  if (aluguel.valor_sinal == null || pagamentos.length === 0) {
+    return { sinal: null, restante: null, manuais: [...pagamentos].sort((a, b) => a.created_at.localeCompare(b.created_at)) };
+  }
 
-  function handleToggle() {
-    startTransition(async () => {
-      await togglePagamento(pagamento.id, !pagamento.pago, imovelId);
+  // Sort by created_at to identify the original records (sinal first, then restante)
+  const sorted = [...pagamentos].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const sinal = sorted[0] ?? null;
+  const restante = sorted[1] ?? null;
+  const manuais = sorted.slice(2).sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+  return { sinal, restante, manuais };
+}
+
+function PagamentosSection({
+  aluguel,
+  pagamentos,
+  pendente,
+  imovelId,
+  valorPagamento,
+  setValorPagamento,
+  onAdicionarPagamento,
+  isPendingAdd,
+}: {
+  aluguel: AluguelComInquilino;
+  pagamentos: Pagamento[];
+  pendente: number;
+  imovelId: string;
+  valorPagamento: string;
+  setValorPagamento: (v: string) => void;
+  onAdicionarPagamento: () => void;
+  isPendingAdd: boolean;
+}) {
+  const { sinal, restante, manuais } = categorizePagamentos(pagamentos, aluguel);
+  const [isSinalPending, startSinalTransition] = useTransition();
+  const [isQuitarPending, startQuitarTransition] = useTransition();
+
+  function handleToggleSinal() {
+    if (!sinal) return;
+    startSinalTransition(async () => {
+      await togglePagamento(sinal.id, !sinal.pago, imovelId);
+    });
+  }
+
+  function handleQuitarPagamento() {
+    if (!restante) return;
+    startQuitarTransition(async () => {
+      await togglePagamento(restante.id, !restante.pago, imovelId);
     });
   }
 
   return (
-    <div className="flex items-center justify-between text-sm py-2 border-b last:border-0">
-      <span>
-        {pagamento.data_pagamento
-          ? formatDate(pagamento.data_pagamento)
-          : formatDate(pagamento.mes_referencia)}
-      </span>
-      <div className="flex items-center gap-2">
-        <span>{formatCurrency(pagamento.valor)}</span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleToggle}
-          disabled={isPending}
-          className="h-7 text-xs"
-        >
-          {isPending
-            ? "..."
-            : pagamento.pago
-              ? "Marcar Pendente"
-              : "Marcar Pago"}
-        </Button>
-      </div>
+    <div className="space-y-3">
+      <p className="text-sm font-medium">Pagamentos</p>
+
+      {/* Sinal */}
+      {sinal && (
+        <div className="flex items-center justify-between rounded-md border p-3">
+          <div className="text-sm">
+            <p className="font-medium">Pagamento Sinal</p>
+            <p className="text-muted-foreground">{formatCurrency(sinal.valor)}</p>
+          </div>
+          <Button
+            variant={sinal.pago ? "default" : "outline"}
+            size="sm"
+            onClick={handleToggleSinal}
+            disabled={isSinalPending}
+            className={sinal.pago ? "bg-green-600 hover:bg-green-700" : ""}
+          >
+            {isSinalPending ? "..." : sinal.pago ? "Sinal Pago" : "Marcar Pago"}
+          </Button>
+        </div>
+      )}
+
+      {/* Manual payments */}
+      {manuais.length > 0 && (
+        <div className="space-y-1">
+          {manuais.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center justify-between text-sm py-2 border-b last:border-0"
+            >
+              <span>
+                Pagamento{" "}
+                {p.data_pagamento
+                  ? formatDate(p.data_pagamento)
+                  : formatDate(p.mes_referencia)}
+              </span>
+              <div className="flex items-center gap-2">
+                <span>{formatCurrency(p.valor)}</span>
+                <Badge
+                  variant="secondary"
+                  className="bg-green-100 text-green-800"
+                >
+                  Pago
+                </Badge>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Quitar Pagamento (restante record) */}
+      {restante && pendente > 0 && (
+        <div className="flex items-center justify-between rounded-md border p-3">
+          <div className="text-sm">
+            <p className="font-medium">Quitar Pagamento</p>
+            <p className="text-muted-foreground">
+              Restante: {formatCurrency(pendente)}
+            </p>
+          </div>
+          <Button
+            variant={restante.pago ? "default" : "outline"}
+            size="sm"
+            onClick={handleQuitarPagamento}
+            disabled={isQuitarPending}
+            className={restante.pago ? "bg-green-600 hover:bg-green-700" : ""}
+          >
+            {isQuitarPending ? "..." : restante.pago ? "Quitado" : "Quitar"}
+          </Button>
+        </div>
+      )}
+
+      {/* Add partial payment */}
+      {pendente > 0 && (
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <label className="text-sm text-muted-foreground">
+              Adicionar Pagamento (R$)
+            </label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={valorPagamento}
+              onChange={(e) => setValorPagamento(e.target.value)}
+              disabled={isPendingAdd}
+            />
+          </div>
+          <Button
+            size="sm"
+            onClick={onAdicionarPagamento}
+            disabled={isPendingAdd || !valorPagamento}
+          >
+            {isPendingAdd ? "..." : "Adicionar"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -179,42 +297,17 @@ function AluguelCard({
           </div>
         </div>
 
-        {/* Pagamentos list */}
-        {pagamentos.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-sm font-medium">Pagamentos</p>
-            {pagamentos.map((p) => (
-              <PagamentoRow key={p.id} pagamento={p} imovelId={imovelId} />
-            ))}
-          </div>
-        )}
-
-        {/* Add payment (only if there's still a pending amount) */}
-        {pendente > 0 && (
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="text-sm text-muted-foreground">
-                Adicionar Pagamento (R$)
-              </label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={valorPagamento}
-                onChange={(e) => setValorPagamento(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
-            <Button
-              size="sm"
-              onClick={handleAdicionarPagamento}
-              disabled={isPending || !valorPagamento}
-            >
-              {isPending ? "..." : "Adicionar"}
-            </Button>
-          </div>
-        )}
+        {/* Pagamentos section */}
+        <PagamentosSection
+          aluguel={aluguel}
+          pagamentos={pagamentos}
+          pendente={pendente}
+          imovelId={imovelId}
+          valorPagamento={valorPagamento}
+          setValorPagamento={setValorPagamento}
+          onAdicionarPagamento={handleAdicionarPagamento}
+          isPendingAdd={isPending}
+        />
 
         {/* Cancel button */}
         <Dialog>
