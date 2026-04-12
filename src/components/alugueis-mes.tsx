@@ -125,7 +125,12 @@ function PagamentosSection({
         <div className="flex items-center justify-between rounded-md border p-3">
           <div className="text-sm">
             <p className="font-medium">Pagamento Sinal</p>
-            <p className="text-muted-foreground">{formatCurrency(sinal.valor)}</p>
+            <p className="text-muted-foreground">
+              {formatCurrency(sinal.valor)}
+              {sinal.pago && sinal.data_pagamento && (
+                <> — {formatDate(sinal.data_pagamento)}</>
+              )}
+            </p>
           </div>
           <Button
             variant={sinal.pago ? "default" : "outline"}
@@ -167,13 +172,16 @@ function PagamentosSection({
         </div>
       )}
 
-      {/* Quitar Pagamento (restante record) */}
-      {restante && pendente > 0 && (
+      {/* Restante Aluguel */}
+      {restante && (
         <div className="flex items-center justify-between rounded-md border p-3">
           <div className="text-sm">
-            <p className="font-medium">Quitar Pagamento</p>
+            <p className="font-medium">Restante Aluguel</p>
             <p className="text-muted-foreground">
-              Restante: {formatCurrency(pendente)}
+              {restante.pago
+                ? <>{formatCurrency(restante.valor)}{restante.data_pagamento && <> — {formatDate(restante.data_pagamento)}</>}</>
+                : <>Restante: {formatCurrency(pendente)}</>
+              }
             </p>
           </div>
           <Button
@@ -183,7 +191,7 @@ function PagamentosSection({
             disabled={isQuitarPending}
             className={restante.pago ? "bg-green-600 hover:bg-green-700" : ""}
           >
-            {isQuitarPending ? "..." : restante.pago ? "Quitado" : "Quitar"}
+            {isQuitarPending ? "..." : restante.pago ? "Pago" : "Quitar"}
           </Button>
         </div>
       )}
