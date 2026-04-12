@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronDown } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { cancelarAluguel, adicionarPagamento } from "@/app/(app)/imoveis/[id]/actions";
+import { cancelarAluguel, adicionarPagamento, togglePagamento } from "@/app/(app)/imoveis/[id]/actions";
 import type { AluguelComInquilino, Pagamento } from "@/lib/types";
 
 interface AlugueisMesProps {
@@ -45,6 +45,48 @@ function getAlugueisDoMes(
     const end = new Date(a.data_fim + "T00:00:00");
     return start <= lastDay && end >= firstDay;
   });
+}
+
+function PagamentoRow({
+  pagamento,
+  imovelId,
+}: {
+  pagamento: Pagamento;
+  imovelId: string;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleToggle() {
+    startTransition(async () => {
+      await togglePagamento(pagamento.id, !pagamento.pago, imovelId);
+    });
+  }
+
+  return (
+    <div className="flex items-center justify-between text-sm py-2 border-b last:border-0">
+      <span>
+        {pagamento.data_pagamento
+          ? formatDate(pagamento.data_pagamento)
+          : formatDate(pagamento.mes_referencia)}
+      </span>
+      <div className="flex items-center gap-2">
+        <span>{formatCurrency(pagamento.valor)}</span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleToggle}
+          disabled={isPending}
+          className="h-7 text-xs"
+        >
+          {isPending
+            ? "..."
+            : pagamento.pago
+              ? "Marcar Pendente"
+              : "Marcar Pago"}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function AluguelCard({
@@ -142,29 +184,7 @@ function AluguelCard({
           <div className="space-y-1">
             <p className="text-sm font-medium">Pagamentos</p>
             {pagamentos.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between text-sm py-1 border-b last:border-0"
-              >
-                <span>
-                  {p.data_pagamento
-                    ? formatDate(p.data_pagamento)
-                    : formatDate(p.mes_referencia)}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span>{formatCurrency(p.valor)}</span>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      p.pago
-                        ? "bg-green-100 text-green-800"
-                        : "bg-yellow-100 text-yellow-800"
-                    }
-                  >
-                    {p.pago ? "Pago" : "Pendente"}
-                  </Badge>
-                </div>
-              </div>
+              <PagamentoRow key={p.id} pagamento={p} imovelId={imovelId} />
             ))}
           </div>
         )}
