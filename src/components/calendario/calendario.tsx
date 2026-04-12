@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CalendarioMensal } from "./calendario-mensal";
@@ -23,11 +23,12 @@ interface Aluguel {
 export interface CalendarioProps {
   alugueis: Aluguel[];
   feriados?: Feriado[];
+  onMonthChange?: (mes: number, ano: number) => void;
 }
 
 type Visao = "mensal" | "anual";
 
-export function Calendario({ alugueis, feriados: feriadosProp }: CalendarioProps) {
+export function Calendario({ alugueis, feriados: feriadosProp, onMonthChange }: CalendarioProps) {
   const hoje = new Date();
   const [visao, setVisao] = useState<Visao>("mensal");
   const [mes, setMes] = useState(hoje.getMonth());
@@ -37,6 +38,10 @@ export function Calendario({ alugueis, feriados: feriadosProp }: CalendarioProps
     if (feriadosProp) return feriadosProp;
     return getFeriados(ano);
   }, [feriadosProp, ano]);
+
+  useEffect(() => {
+    onMonthChange?.(mes, ano);
+  }, [mes, ano, onMonthChange]);
 
   function irMesAnterior() {
     if (mes === 0) {
