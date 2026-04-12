@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ImovelCard } from "@/components/imovel-card";
-import type { Imovel, AluguelComInquilino } from "@/lib/types";
+import type { Imovel, AluguelComInquilino, Pagamento } from "@/lib/types";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -15,9 +15,31 @@ export default async function DashboardPage() {
     .select("*, inquilino:inquilinos(*)")
     .eq("status", "ativo");
 
-  const aluguelPorImovel = new Map<string, AluguelComInquilino>();
-  alugueis?.forEach((a: AluguelComInquilino) => {
-    aluguelPorImovel.set(a.imovel_id, a);
+  // Fetch pagamentos for all active rentals
+  const aluguelIds = (alugueis as AluguelComInquilino[])?.map((a) => a.id) ?? [];
+  let pagamentos: Pagamento[] = [];
+  if (aluguelIds.length > 0) {
+    const { data: pagData } = await supabase
+      .from("pagamentos")
+      .select("*")
+      .in("aluguel_id", aluguelIds);
+    pagamentos = (pagData as Pagamento[]) ?? [];
+  }
+
+  // Group alugueis by imovel
+  const alugueisPorImovel = new Map<string, AluguelComInquilino[]>();
+  (alugueis as AluguelComInquilino[])?.forEach((a) => {
+    const list = alugueisPorImovel.get(a.imovel_id) ?? [];
+    list.push(a);
+    alugueisPorImovel.set(a.imovel_id, list);
+  });
+
+  // Group pagamentos by aluguel
+  const pagamentosPorAluguel = new Map<string, Pagamento[]>();
+  pagamentos.forEach((p) => {
+    const list = pagamentosPorAluguel.get(p.aluguel_id) ?? [];
+    list.push(p);
+    pagamentosPorAluguel.set(p.aluguel_id, list);
   });
 
   return (
@@ -28,7 +50,8 @@ export default async function DashboardPage() {
           <ImovelCard
             key={imovel.id}
             imovel={imovel}
-            aluguelAtivo={aluguelPorImovel.get(imovel.id) ?? null}
+            alugueisAtivos={alugueisPorImovel.get(imovel.id) ?? []}
+            pagamentosPorAluguel={pagamentosPorAluguel}
           />
         ))}
       </div>
