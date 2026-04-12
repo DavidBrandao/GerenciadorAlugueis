@@ -1,0 +1,208 @@
+"use client";
+
+import { useMemo } from "react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { isFeriado, type Feriado } from "@/lib/feriados";
+
+interface Pagamento {
+  mes_referencia: string;
+  pago: boolean;
+}
+
+interface Aluguel {
+  data_inicio: string;
+  data_fim: string;
+  tipo: "mensal" | "temporada";
+  pagamentos: Pagamento[];
+}
+
+export interface CalendarioMensalProps {
+  mes: number; // 0-11
+  ano: number;
+  alugueis: Aluguel[];
+  feriados: Feriado[];
+  onPrevMonth?: () => void;
+  onNextMonth?: () => void;
+}
+
+const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+function getDaysInMonth(ano: number, mes: number) {
+  return new Date(ano, mes + 1, 0).getDate();
+}
+
+function getFirstDayOfWeek(ano: number, mes: number) {
+  return new Date(ano, mes, 1).getDay();
+}
+
+function formatYearMonth(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+function isDayInRange(date: Date, inicio: string, fim: string): boolean {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const start = new Date(inicio + "T00:00:00");
+  const end = new Date(fim + "T00:00:00");
+  return d >= start && d <= end;
+}
+
+function isDayPaid(date: Date, aluguel: Aluguel): boolean {
+  if (aluguel.tipo === "temporada") {
+    return aluguel.pagamentos.length > 0 && aluguel.pagamentos.every((p) => p.pago);
+  }
+  // mensal: check if the payment for this month is paid
+  const ym = formatYearMonth(date);
+  const pagamento = aluguel.pagamentos.find((p) => p.mes_referencia === ym);
+  return pagamento?.pago ?? false;
+}
+
+interface DayInfo {
+  bg: string;
+  feriado: Feriado | undefined;
+  tooltipLines: string[];
+}
+
+export function CalendarioMensal({
+  mes,
+  ano,
+  alugueis,
+  feriados,
+  onPrevMonth,
+  onNextMonth,
+}: CalendarioMensalProps) {
+  const totalDays = getDaysInMonth(ano, mes);
+  const firstDay = getFirstDayOfWeek(ano, mes);
+
+  const dayInfoMap = useMemo(() => {
+    const map = new Map<number, DayInfo>();
+
+    for (let day = 1; day <= totalDays; day++) {
+      const date = new Date(ano, mes, day);
+      const tooltipLines: string[] = [];
+      let inContract = false;
+      let paid = false;
+
+      for (const aluguel of alugueis) {
+        if (isDayInRange(date, aluguel.data_inicio, aluguel.data_fim)) {
+          inContract = true;
+          const tipoLabel = aluguel.tipo === "mensal" ? "Mensal" : "Temporada";
+          tooltipLines.push(`${tipoLabel}: ${aluguel.data_inicio} a ${aluguel.data_fim}`);
+
+          if (isDayPaid(date, aluguel)) {
+            paid = true;
+            tooltipLines.push("Status: Pago");
+          } else {
+            tooltipLines.push("Status: Pendente");
+          }
+        }
+      }
+
+      const feriadoInfo = isFeriado(date, feriados);
+      if (feriadoInfo) {
+        tooltipLines.push(`Feriado: ${feriadoInfo.nome}`);
+      }
+
+      let bg = "";
+      if (paid) {
+        bg = "bg-green-100";
+      } else if (inContract) {
+        bg = "bg-blue-100";
+      }
+
+      map.set(day, { bg, feriado: feriadoInfo, tooltipLines });
+    }
+
+    return map;
+  }, [ano, mes, totalDays, alugueis, feriados]);
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) {
+    cells.push(null);
+  }
+  for (let d = 1; d <= totalDays; d++) {
+    cells.push(d);
+  }
+
+  return (
+    <div className="w-full max-w-md mx-auto">
+      {/* Header with navigation */}
+      <div className="flex items-center justify-between mb-4">
+        <Button variant="ghost" size="icon" onClick={onPrevMonth} aria-label="Mês anterior">
+          <ChevronLeft className="size-4" />
+        </Button>
+        <h2 className="text-lg font-semibold">
+          {MESES[mes]} {ano}
+        </h2>
+        <Button variant="ghost" size="icon" onClick={onNextMonth} aria-label="Próximo mês">
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 gap-px mb-1">
+        {DIAS_SEMANA.map((d) => (
+          <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <TooltipProvider>
+        <div className="grid grid-cols-7 gap-px">
+          {cells.map((day, i) => {
+            if (day === null) {
+              return <div key={`empty-${i}`} className="aspect-square" />;
+            }
+
+            const info = dayInfoMap.get(day)!;
+            const hasTooltip = info.tooltipLines.length > 0;
+
+            const cellContent = (
+              <div
+                className={`relative aspect-square flex items-center justify-center text-sm rounded-md cursor-default transition-colors hover:ring-1 hover:ring-border ${info.bg}`}
+              >
+                {day}
+                {info.feriado && (
+                  <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                )}
+              </div>
+            );
+
+            if (!hasTooltip) {
+              return <div key={day}>{cellContent}</div>;
+            }
+
+            return (
+              <Tooltip key={day}>
+                <TooltipTrigger render={<div />}>
+                  {cellContent}
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="space-y-0.5">
+                    {info.tooltipLines.map((line, idx) => (
+                      <div key={idx}>{line}</div>
+                    ))}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </TooltipProvider>
+    </div>
+  );
+}
