@@ -139,7 +139,7 @@ function PagamentosSection({
             disabled={isSinalPending}
             className={sinal.pago ? "bg-green-600 hover:bg-green-700" : ""}
           >
-            {isSinalPending ? "..." : sinal.pago ? "Sinal Pago" : "Marcar Pago"}
+            {isSinalPending ? "..." : sinal.pago ? "Sinal Pago" : "Pagar Sinal"}
           </Button>
         </div>
       )}
