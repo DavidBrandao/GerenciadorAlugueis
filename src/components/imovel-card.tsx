@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import type { Imovel, AluguelComInquilino, Pagamento } from "@/lib/types";
 
 const tipoLabels: Record<string, string> = {
@@ -121,6 +121,55 @@ function SitioContent({
   );
 }
 
+function MesesGrid({
+  aluguel,
+  pagamentos,
+}: {
+  aluguel: AluguelComInquilino;
+  pagamentos: Pagamento[];
+}) {
+  const anoAtual = new Date().getFullYear();
+  const inicio = new Date(aluguel.data_inicio + "T00:00:00");
+  const fim = new Date(aluguel.data_fim + "T00:00:00");
+
+  return (
+    <div className="grid grid-cols-6 gap-1">
+      {Array.from({ length: 12 }, (_, i) => {
+        const mes = i + 1;
+        const ym = `${anoAtual}-${String(mes).padStart(2, "0")}`;
+        const primeiroDia = new Date(anoAtual, i, 1);
+        const ultimoDia = new Date(anoAtual, i + 1, 0);
+        const dentroContrato = primeiroDia <= fim && ultimoDia >= inicio;
+
+        if (!dentroContrato) {
+          return (
+            <div
+              key={mes}
+              className="flex items-center justify-center rounded text-xs font-medium h-7 bg-muted text-muted-foreground"
+            >
+              {mes}
+            </div>
+          );
+        }
+
+        const pagMes = pagamentos.find((p) => p.mes_referencia.startsWith(ym));
+        const pago = pagMes?.pago ?? false;
+
+        return (
+          <div
+            key={mes}
+            className={`flex items-center justify-center rounded text-xs font-bold h-7 text-white ${
+              pago ? "bg-green-600" : "bg-red-500"
+            }`}
+          >
+            {mes}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function CasaContent({
   aluguel,
   pagamentosPorAluguel,
@@ -128,39 +177,23 @@ function CasaContent({
   aluguel: AluguelComInquilino;
   pagamentosPorAluguel: Map<string, Pagamento[]>;
 }) {
-  const hoje = new Date();
   const pags = pagamentosPorAluguel.get(aluguel.id) ?? [];
 
-  // For mensal: find pagamento for current month
-  // For temporada: use all pagamentos
-  let valorMes = 0;
-  let pagoMes = false;
-
-  if (aluguel.tipo === "mensal") {
-    const ym = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
-    const pagMes = pags.find((p) => p.mes_referencia.startsWith(ym));
-    if (pagMes) {
-      valorMes = pagMes.valor;
-      pagoMes = pagMes.pago;
-    }
-  } else {
-    valorMes = aluguel.valor_total;
-    const totalPago = pags.filter((p) => p.pago).reduce((sum, p) => sum + p.valor, 0);
-    pagoMes = totalPago >= aluguel.valor_total;
-  }
-
   return (
-    <CardContent className="space-y-1">
+    <CardContent className="space-y-2">
       <p className="text-sm">
         <span className="font-medium">Inquilino:</span>{" "}
         {aluguel.inquilino.nome_completo}
       </p>
-      <p className="text-sm text-muted-foreground">
-        {formatCurrency(valorMes)} —{" "}
-        <span className={pagoMes ? "text-green-600" : "text-yellow-600"}>
-          {pagoMes ? "Pago" : "Pendente"}
-        </span>
-      </p>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-sm">
+        <p className="text-muted-foreground">Inicio Contrato</p>
+        <p className="font-medium">{formatDate(aluguel.data_inicio)}</p>
+        <p className="text-muted-foreground">Final Contrato</p>
+        <p className="font-medium">{formatDate(aluguel.data_fim)}</p>
+        <p className="text-muted-foreground">Valor Aluguel</p>
+        <p className="font-medium">{formatCurrency(aluguel.valor_total)}</p>
+      </div>
+      <MesesGrid aluguel={aluguel} pagamentos={pags} />
     </CardContent>
   );
 }

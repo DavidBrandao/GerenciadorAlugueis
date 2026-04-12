@@ -97,7 +97,7 @@ export function ImovelDetailClient({
 
       {aluguelAtivo ? (
         <div className="space-y-6">
-          <AluguelInfo aluguel={aluguelAtivo} />
+          <AluguelInfo aluguel={aluguelAtivo} imovelId={imovel.id} pagamentos={pagamentos} />
           <PagamentosTable
             pagamentos={pagamentos}
             aluguelTipo={aluguelAtivo.tipo}

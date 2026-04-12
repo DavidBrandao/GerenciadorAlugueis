@@ -108,7 +108,7 @@ export default async function ImovelPage({ params }: PageProps) {
 
       <Separator />
 
-      <HistoricoAlugueis alugueis={historico} />
+      <HistoricoAlugueis alugueis={historico} imovelId={id} />
     </div>
   );
 }

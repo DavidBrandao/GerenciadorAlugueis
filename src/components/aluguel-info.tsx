@@ -1,33 +1,89 @@
+"use client";
+
+import { useState, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Pencil } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
-import type { AluguelComInquilino } from "@/lib/types";
+import { editarAluguel } from "@/app/(app)/imoveis/[id]/actions";
+import type { AluguelComInquilino, Pagamento } from "@/lib/types";
 
 interface AluguelInfoProps {
   aluguel: AluguelComInquilino;
+  imovelId: string;
+  pagamentos: Pagamento[];
 }
 
-export function AluguelInfo({ aluguel }: AluguelInfoProps) {
+export function AluguelInfo({ aluguel, imovelId, pagamentos }: AluguelInfoProps) {
+  const [editando, setEditando] = useState(false);
+  const [nome, setNome] = useState(aluguel.inquilino.nome_completo);
+  const [valor, setValor] = useState(String(aluguel.valor_total));
+  const [isPending, startTransition] = useTransition();
+
   const remaining =
     aluguel.valor_sinal != null
       ? aluguel.valor_total - aluguel.valor_sinal
       : null;
+
+  function handleSalvar() {
+    const valorNum = parseFloat(valor);
+    if (!nome.trim() || isNaN(valorNum) || valorNum <= 0) return;
+
+    startTransition(async () => {
+      await editarAluguel(
+        aluguel.id,
+        aluguel.inquilino.id,
+        nome.trim(),
+        valorNum,
+        imovelId
+      );
+      setEditando(false);
+    });
+  }
+
+  function handleCancelar() {
+    setNome(aluguel.inquilino.nome_completo);
+    setValor(String(aluguel.valor_total));
+    setEditando(false);
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Aluguel Ativo</span>
-          <Badge variant="default" className="bg-green-600">
-            {aluguel.tipo === "mensal" ? "Mensal" : "Temporada"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="default" className="bg-green-600">
+              {aluguel.tipo === "mensal" ? "Mensal" : "Temporada"}
+            </Badge>
+            {!editando && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setEditando(true)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div>
           <span className="text-sm text-muted-foreground">Inquilino</span>
-          <p className="font-medium">{aluguel.inquilino.nome_completo}</p>
+          {editando ? (
+            <Input
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              disabled={isPending}
+            />
+          ) : (
+            <p className="font-medium">{aluguel.inquilino.nome_completo}</p>
+          )}
         </div>
 
         <div>
@@ -40,11 +96,55 @@ export function AluguelInfo({ aluguel }: AluguelInfoProps) {
         <Separator />
 
         <div>
-          <span className="text-sm text-muted-foreground">Valor Total</span>
-          <p className="font-medium text-lg">
-            {formatCurrency(aluguel.valor_total)}
+          <span className="text-sm text-muted-foreground">Valor Mensal</span>
+          {editando ? (
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              disabled={isPending}
+            />
+          ) : (
+            <p className="font-medium text-lg">
+              {formatCurrency(aluguel.valor_total)}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <span className="text-sm text-muted-foreground">Valor Pago Contrato</span>
+          <p className="font-medium text-lg text-green-600">
+            {formatCurrency(
+              pagamentos
+                .filter((p) => p.pago)
+                .reduce((sum, p) => sum + p.valor, 0)
+            )}
           </p>
         </div>
+
+        {editando && (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={handleSalvar}
+              disabled={isPending}
+              className="flex-1"
+            >
+              {isPending ? "Salvando..." : "Salvar"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancelar}
+              disabled={isPending}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+          </div>
+        )}
 
         {aluguel.valor_sinal != null && (
           <>

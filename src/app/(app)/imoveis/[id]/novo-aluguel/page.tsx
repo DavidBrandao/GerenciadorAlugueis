@@ -46,8 +46,20 @@ export default function NovoAluguelPage() {
   const feriados = useMemo(() => getFeriados(ano), [ano]);
 
   useEffect(() => {
-    async function fetchAlugueis() {
+    async function fetchData() {
       const supabase = createClient();
+
+      // Fetch imovel type to set default
+      const { data: imovelData } = await supabase
+        .from("imoveis")
+        .select("tipo")
+        .eq("id", imovelId)
+        .single();
+
+      if (imovelData && imovelData.tipo === "sitio") {
+        setTipo("temporada");
+      }
+
       const { data: alugueisData } = await supabase
         .from("alugueis")
         .select("data_inicio, data_fim, tipo, pagamentos(mes_referencia, pago)")
@@ -65,7 +77,7 @@ export default function NovoAluguelPage() {
         );
       }
     }
-    fetchAlugueis();
+    fetchData();
   }, [imovelId]);
 
   const disabledDates = useMemo(() => {

@@ -40,6 +40,56 @@ export async function cancelarAluguel(aluguelId: string, imovelId: string) {
   revalidatePath("/dashboard");
 }
 
+export async function excluirAluguel(
+  aluguelId: string,
+  senha: string,
+  imovelId: string
+): Promise<{ error?: string }> {
+  if (senha !== "admin") {
+    return { error: "Senha incorreta" };
+  }
+
+  const supabase = await createClient();
+
+  // Delete pagamentos first (foreign key)
+  await supabase
+    .from("pagamentos")
+    .delete()
+    .eq("aluguel_id", aluguelId);
+
+  await supabase
+    .from("alugueis")
+    .delete()
+    .eq("id", aluguelId);
+
+  revalidatePath(`/imoveis/${imovelId}`);
+  revalidatePath("/dashboard");
+  return {};
+}
+
+export async function editarAluguel(
+  aluguelId: string,
+  inquilinoId: string,
+  nomeCompleto: string,
+  valorTotal: number,
+  imovelId: string
+) {
+  const supabase = await createClient();
+
+  await supabase
+    .from("inquilinos")
+    .update({ nome_completo: nomeCompleto })
+    .eq("id", inquilinoId);
+
+  await supabase
+    .from("alugueis")
+    .update({ valor_total: valorTotal })
+    .eq("id", aluguelId);
+
+  revalidatePath(`/imoveis/${imovelId}`);
+  revalidatePath("/dashboard");
+}
+
 export async function adicionarPagamento(
   aluguelId: string,
   valor: number,
