@@ -59,12 +59,23 @@ function categorizePagamentos(
     return { sinal: null, restante: null, manuais: [...pagamentos].sort((a, b) => a.created_at.localeCompare(b.created_at)) };
   }
 
-  // Sort by created_at to identify the original records (sinal first, then restante)
-  const sorted = [...pagamentos].sort((a, b) => a.created_at.localeCompare(b.created_at));
-  const sinal = sorted[0] ?? null;
-  const restante = sorted[1] ?? null;
-  const manuais = sorted.slice(2).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  // Identify sinal and restante by valor + mes_referencia matching the rental start date
+  const valorRestante = aluguel.valor_total - aluguel.valor_sinal;
+  let sinal: Pagamento | null = null;
+  let restante: Pagamento | null = null;
+  const manuais: Pagamento[] = [];
 
+  for (const p of pagamentos) {
+    if (!sinal && p.valor === aluguel.valor_sinal && p.mes_referencia === aluguel.data_inicio) {
+      sinal = p;
+    } else if (!restante && p.valor === valorRestante && p.mes_referencia === aluguel.data_inicio) {
+      restante = p;
+    } else {
+      manuais.push(p);
+    }
+  }
+
+  manuais.sort((a, b) => a.created_at.localeCompare(b.created_at));
   return { sinal, restante, manuais };
 }
 
