@@ -1,15 +1,25 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { ChevronDown, ChevronRight, X } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Imovel, Pagamento } from "@/lib/types";
 
 interface PagamentoComImovel extends Pagamento {
   imovel_id: string;
+  aluguel_status: string;
 }
 
 interface DashboardClientProps {
@@ -30,12 +40,44 @@ export function DashboardClient({ imoveis, pagamentos }: DashboardClientProps) {
   const hoje = new Date();
   const anoAtual = hoje.getFullYear();
   const mesAtual = hoje.getMonth();
+  const router = useRouter();
 
-  // Seção 2: date range state
+  // Seção 2: date range state - inputs are staging, applied on button click
   const [dataInicio, setDataInicio] = useState(`${anoAtual}-01-01`);
   const [dataFim, setDataFim] = useState(hoje.toISOString().split("T")[0]);
   const [filtroImovel, setFiltroImovel] = useState<string>("todos");
+  const [aplicado, setAplicado] = useState({ dataInicio: `${anoAtual}-01-01`, dataFim: hoje.toISOString().split("T")[0], filtroImovel: "todos" });
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
+  const [mesSelecionado, setMesSelecionado] = useState<{ mes: number; ano: number } | null>(null);
+
+  // Detalhes do mês selecionado na previsão
+  const detalheMes = useMemo(() => {
+    if (!mesSelecionado) return null;
+    const ym = `${mesSelecionado.ano}-${String(mesSelecionado.mes + 1).padStart(2, "0")}`;
+    const doMes = pagamentos.filter((p) => getYM(p.mes_referencia) === ym);
+
+    // Agrupar por imóvel
+    const porImovel = new Map<string, PagamentoComImovel[]>();
+    doMes.forEach((p) => {
+      const list = porImovel.get(p.imovel_id) ?? [];
+      list.push(p);
+      porImovel.set(p.imovel_id, list);
+    });
+
+    return imoveis
+      .map((imovel) => {
+        const pags = porImovel.get(imovel.id) ?? [];
+        const pago = pags.filter((p) => p.pago).reduce((s, p) => s + p.valor, 0);
+        const pendente = pags.filter((p) => !p.pago).reduce((s, p) => s + p.valor, 0);
+        return { imovel, pagamentos: pags, pago, pendente, total: pago + pendente };
+      })
+      .filter((i) => i.total > 0);
+  }, [mesSelecionado, pagamentos, imoveis]);
+
+  function handleAplicar() {
+    setAplicado({ dataInicio, dataFim, filtroImovel });
+    router.refresh();
+  }
 
   // ===== SEÇÃO 1: Previsão de Receita - próximos 6 meses =====
   const previsao = useMemo(() => {
@@ -69,9 +111,9 @@ export function DashboardClient({ imoveis, pagamentos }: DashboardClientProps) {
   // ===== SEÇÃO 2: Receita Recebida + Detalhamento =====
   const receitaData = useMemo(() => {
     const filtradas = pagamentos.filter((p) => {
-      if (!p.pago || !p.data_pagamento) return false;
-      if (p.data_pagamento < dataInicio || p.data_pagamento > dataFim) return false;
-      if (filtroImovel !== "todos" && p.imovel_id !== filtroImovel) return false;
+      if (!p.pago) return false;
+      if (p.mes_referencia < aplicado.dataInicio || p.mes_referencia > aplicado.dataFim) return false;
+      if (aplicado.filtroImovel !== "todos" && p.imovel_id !== aplicado.filtroImovel) return false;
       return true;
     });
 
@@ -94,7 +136,7 @@ export function DashboardClient({ imoveis, pagamentos }: DashboardClientProps) {
       .filter((i) => i.total > 0);
 
     return { totalRecebido, imoveisComReceita };
-  }, [pagamentos, dataInicio, dataFim, filtroImovel, imoveis]);
+  }, [pagamentos, aplicado, imoveis]);
 
   function toggleExpandido(imovelId: string) {
     setExpandidos((prev) => {
@@ -110,6 +152,13 @@ export function DashboardClient({ imoveis, pagamentos }: DashboardClientProps) {
 
   return (
     <div className="space-y-8">
+      {/* Botão atualizar */}
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => router.refresh()}>
+          Atualizar
+        </Button>
+      </div>
+
       {/* ===== SEÇÃO 1: Previsão de Receita ===== */}
       <div>
         <h3 className="text-lg font-semibold mb-3">Previsão de Receita</h3>
@@ -120,7 +169,8 @@ export function DashboardClient({ imoveis, pagamentos }: DashboardClientProps) {
             return (
               <Card
                 key={`${item.ano}-${item.mes}`}
-                className={isAtual ? "ring-2 ring-primary" : ""}
+                className={`cursor-pointer hover:shadow-md transition-shadow ${isAtual ? "ring-2 ring-primary" : ""}`}
+                onClick={() => setMesSelecionado({ mes: item.mes, ano: item.ano })}
               >
                 <CardContent className="p-3 space-y-2">
                   <p className={`text-xs font-medium text-center ${isAtual ? "text-primary" : "text-muted-foreground"}`}>
@@ -146,6 +196,61 @@ export function DashboardClient({ imoveis, pagamentos }: DashboardClientProps) {
           })}
         </div>
       </div>
+
+      {/* Dialog de detalhe do mês */}
+      <Dialog open={!!mesSelecionado} onOpenChange={(open) => { if (!open) setMesSelecionado(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {mesSelecionado && `${MESES[mesSelecionado.mes]} ${mesSelecionado.ano}`}
+            </DialogTitle>
+          </DialogHeader>
+          {detalheMes && detalheMes.length > 0 ? (
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+              {detalheMes.map(({ imovel, pagamentos: pags, pago, pendente, total }) => (
+                <div key={imovel.id} className="border rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{imovel.nome}</span>
+                    <span className="font-bold">{formatCurrency(total)}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {pags.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Parcela</span>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            className={
+                              p.pago
+                                ? "bg-green-600 text-white"
+                                : "bg-yellow-500 text-yellow-900"
+                            }
+                          >
+                            {p.pago ? "Pago" : "Pendente"}
+                          </Badge>
+                          <span className="font-medium w-24 text-right">
+                            {formatCurrency(p.valor)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-xs pt-1 border-t">
+                    <span className="text-green-600">Recebido: {formatCurrency(pago)}</span>
+                    <span className="text-yellow-600">Pendente: {formatCurrency(pendente)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">
+              Nenhuma entrada prevista para este mês.
+            </p>
+          )}
+          <DialogClose render={<Button variant="outline" className="w-full" />}>
+            Fechar
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
 
       {/* ===== SEÇÃO 2: Receita Recebida ===== */}
       <div className="space-y-4">
@@ -184,6 +289,9 @@ export function DashboardClient({ imoveis, pagamentos }: DashboardClientProps) {
               ))}
             </select>
           </div>
+          <Button onClick={handleAplicar}>
+            Aplicar
+          </Button>
         </div>
 
         {/* Total */}

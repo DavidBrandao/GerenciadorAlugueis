@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { criarAluguel } from "./actions";
+import { criarAluguel, buscarInquilinoPorCpf } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import { CalendarioMensal } from "@/components/calendario/calendario-mensal";
 import { getFeriados } from "@/lib/feriados";
@@ -32,6 +32,11 @@ export default function NovoAluguelPage() {
   // Monetary fields
   const [valorTotal, setValorTotal] = useState("");
   const [valorSinal, setValorSinal] = useState("");
+
+  // Inquilino fields
+  const [nome, setNome] = useState("");
+  const [endereco, setEndereco] = useState("");
+  const [email, setEmail] = useState("");
 
   // Masked fields
   const [cpf, setCpf] = useState("");
@@ -78,6 +83,19 @@ export default function NovoAluguelPage() {
     return digits
       .replace(/(\d{2})(\d)/, "($1) $2")
       .replace(/(\d{5})(\d)/, "$1-$2");
+  }
+
+  async function handleCpfBlur() {
+    const digits = cpf.replace(/\D/g, "");
+    if (digits.length !== 11) return;
+    const inquilino = await buscarInquilinoPorCpf(cpf);
+    if (inquilino) {
+      setNome(inquilino.nome_completo);
+      setRg(maskRg(inquilino.rg));
+      setEndereco(inquilino.endereco);
+      setTelefone(maskTelefone(inquilino.telefone));
+      setEmail(inquilino.email ?? "");
+    }
   }
 
   const cpfValido = cpf.replace(/\D/g, "").length === 11;
@@ -323,6 +341,8 @@ export default function NovoAluguelPage() {
                 name="nome_completo"
                 required
                 placeholder="Nome completo do inquilino"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
               />
             </div>
 
@@ -336,6 +356,7 @@ export default function NovoAluguelPage() {
                 placeholder="000.000.000-00"
                 value={cpf}
                 onChange={(e) => setCpf(maskCpf(e.target.value))}
+                onBlur={handleCpfBlur}
                 maxLength={14}
               />
               {cpf && !cpfValido && (
@@ -367,6 +388,8 @@ export default function NovoAluguelPage() {
                 name="endereco"
                 required
                 placeholder="Endereço do inquilino"
+                value={endereco}
+                onChange={(e) => setEndereco(e.target.value)}
               />
             </div>
 
@@ -396,6 +419,8 @@ export default function NovoAluguelPage() {
                 name="email"
                 type="email"
                 placeholder="email@exemplo.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
           </CardContent>

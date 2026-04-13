@@ -4,6 +4,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+export async function buscarInquilinoPorCpf(cpf: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("inquilinos")
+    .select("nome_completo, rg, endereco, telefone, email")
+    .eq("cpf", cpf)
+    .single();
+  return data;
+}
+
 export async function criarAluguel(imovelId: string, formData: FormData) {
   const supabase = await createClient();
 
