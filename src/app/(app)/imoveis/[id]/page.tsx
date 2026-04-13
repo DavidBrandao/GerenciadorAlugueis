@@ -87,18 +87,23 @@ export default async function ImovelPage({ params }: PageProps) {
     pagamentosSerializado[aluguelId] = pags;
   });
 
+  const isSitio = typedImovel.tipo === "sitio";
+  const temAluguelAtivo = alugueisAtivos.length > 0;
+  const mostrarNovoAluguelTopo = isSitio;
+
   return (
     <div className="space-y-6">
+      <Link href="/dashboard">
+        <Button variant="ghost" size="sm">&larr; Voltar</Button>
+      </Link>
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">{typedImovel.nome}</h2>
-        <Link href={`/imoveis/${id}/novo-aluguel`}>
-          <Button>Novo Aluguel</Button>
-        </Link>
+        {mostrarNovoAluguelTopo && (
+          <Link href={`/imoveis/${id}/novo-aluguel`}>
+            <Button>Novo Aluguel</Button>
+          </Link>
+        )}
       </div>
-
-      {typedImovel.descricao && (
-        <p className="text-muted-foreground">{typedImovel.descricao}</p>
-      )}
 
       <ImovelDetailClient
         imovel={typedImovel}

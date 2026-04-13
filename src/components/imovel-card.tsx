@@ -148,18 +148,10 @@ function MesesGrid({
     current.setMonth(current.getMonth() + 1);
   }
 
-  // Filter out fiança (valor_sinal record with mes_referencia = data_inicio and valor = sinal)
-  const mensalidades = pagamentos.filter((p) => {
-    if (aluguel.valor_sinal != null && p.valor === aluguel.valor_sinal && p.mes_referencia === aluguel.data_inicio) {
-      return false;
-    }
-    return true;
-  });
-
   return (
     <div className="grid grid-cols-6 gap-1">
       {meses.map(({ ym, label }) => {
-        const pagMes = mensalidades.find((p) => p.mes_referencia.startsWith(ym));
+        const pagMes = pagamentos.find((p) => p.mes_referencia.startsWith(ym));
         const pago = pagMes?.pago ?? false;
 
         return (
@@ -199,7 +191,7 @@ function CasaContent({
         <p className="font-medium">{formatDate(aluguel.data_fim)}</p>
         <p className="text-muted-foreground">Valor Aluguel</p>
         <p className="font-medium">{formatCurrency(aluguel.valor_total)}</p>
-        {aluguel.valor_sinal != null && (
+        {aluguel.valor_sinal != null && aluguel.valor_sinal > 0 && (
           <>
             <p className="text-muted-foreground">Fiança</p>
             <p className="font-medium">{formatCurrency(aluguel.valor_sinal)}</p>
@@ -220,8 +212,8 @@ export function ImovelCard({
   const isSitio = imovel.tipo === "sitio";
 
   // Determine badge
-  let badgeVariant: "default" | "secondary" = "secondary";
   let badgeText = "Livre";
+  let badgeClass = "bg-green-500 text-white"; // Livre = verde
 
   if (isSitio) {
     const alugueisDoMes = getAlugueisDoMes(
@@ -236,17 +228,17 @@ export function ImovelCard({
         hoje.getMonth()
       );
       if (ocupadoCompleto) {
-        badgeVariant = "default";
         badgeText = "Ocupado";
+        badgeClass = "bg-blue-300 text-blue-900";
       } else {
-        badgeVariant = "default";
         badgeText = `${alugueisDoMes.length} ${alugueisDoMes.length === 1 ? "aluguel" : "aluguéis"}`;
+        badgeClass = "bg-blue-300 text-blue-900";
       }
     }
   } else {
     if (alugueisAtivos.length > 0) {
-      badgeVariant = "default";
       badgeText = "Ocupado";
+      badgeClass = "bg-red-500 text-white";
     }
   }
 
@@ -256,7 +248,7 @@ export function ImovelCard({
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">{imovel.nome}</CardTitle>
-            <Badge variant={badgeVariant}>{badgeText}</Badge>
+            <Badge className={badgeClass}>{badgeText}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
             {tipoLabels[imovel.tipo]}

@@ -92,13 +92,16 @@ export function ImovelDetailClient({
 
   return (
     <>
-      <Calendario alugueis={calendarAlugueis} />
-
-      <Separator />
+      {aluguelAtivo && (
+        <>
+          <Calendario alugueis={calendarAlugueis} />
+          <Separator />
+        </>
+      )}
 
       {aluguelAtivo ? (
         <div className="space-y-6">
-          <AluguelInfo aluguel={aluguelAtivo} imovelId={imovel.id} pagamentos={pagamentos} />
+          <AluguelInfo aluguel={aluguelAtivo} imovelId={imovel.id} pagamentos={pagamentos} tipoImovel={imovel.tipo} />
           <PagamentosTable
             pagamentos={pagamentos}
             aluguelTipo={aluguelAtivo.tipo}
@@ -139,10 +142,12 @@ export function ImovelDetailClient({
           </Dialog>
         </div>
       ) : (
-        <div className="text-center py-8 space-y-4">
+        <div className="flex flex-col items-center py-12 space-y-4">
           <p className="text-muted-foreground text-lg">Nenhum aluguel ativo</p>
-          <Link href={`/imoveis/${imovel.id}/novo-aluguel`}>
-            <Button size="lg">Novo Aluguel</Button>
+          <Link href={`/imoveis/${imovel.id}/novo-aluguel`} className="w-full max-w-md">
+            <Button size="lg" className="w-full text-lg py-6">
+              Novo Aluguel
+            </Button>
           </Link>
         </div>
       )}

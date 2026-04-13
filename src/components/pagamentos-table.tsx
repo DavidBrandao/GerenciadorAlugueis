@@ -33,17 +33,18 @@ function formatMesReferencia(
   tipoImovel?: string
 ): string {
   if (tipo === "mensal") {
-    // First entry with sinal is fiança/sinal
-    if (valorSinal != null && index === 0) {
-      return tipoImovel && tipoImovel !== "sitio" ? "Fiança" : "Sinal";
-    }
     const [year, month] = mesRef.split("-");
     const monthNames = [
       "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
       "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
     ];
     const monthIndex = parseInt(month, 10) - 1;
-    return `${monthNames[monthIndex]} ${year}`;
+    const label = `${monthNames[monthIndex]} ${year}`;
+    // For casa/box with fiança, first mensalidade gets "(Fiança)" suffix
+    if (valorSinal != null && tipoImovel && tipoImovel !== "sitio" && index === 0) {
+      return `${label} (Fiança)`;
+    }
+    return label;
   }
 
   // temporada
@@ -61,16 +62,24 @@ function PagamentoRow({
   pagamento,
   label,
   imovelId,
+  isFianca,
+  aluguelId,
 }: {
   pagamento: Pagamento;
   label: string;
   imovelId: string;
+  isFianca?: boolean;
+  aluguelId?: string;
 }) {
   const [isPending, startTransition] = useTransition();
 
   function handleToggle() {
     startTransition(async () => {
-      await togglePagamento(pagamento.id, !pagamento.pago, imovelId);
+      if (isFianca && !pagamento.pago && aluguelId) {
+        await pagarFianca(aluguelId, imovelId);
+      } else {
+        await togglePagamento(pagamento.id, !pagamento.pago, imovelId);
+      }
     });
   }
 
@@ -91,56 +100,19 @@ function PagamentoRow({
       </TableCell>
       <TableCell>
         <Button
-          variant="outline"
+          variant={isFianca && !pagamento.pago ? "default" : "outline"}
           size="sm"
           onClick={handleToggle}
           disabled={isPending}
+          className={isFianca && !pagamento.pago ? "bg-green-600 hover:bg-green-700" : ""}
         >
           {isPending
             ? "..."
-            : pagamento.pago
-              ? "Marcar Pendente"
-              : "Marcar Pago"}
-        </Button>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function FiancaRow({
-  aluguelId,
-  imovelId,
-  fiancaPaga,
-  fiancaValor,
-}: {
-  aluguelId: string;
-  imovelId: string;
-  fiancaPaga: boolean;
-  fiancaValor: number;
-}) {
-  const [isPending, startTransition] = useTransition();
-
-  function handlePagarFianca() {
-    startTransition(async () => {
-      await pagarFianca(aluguelId, imovelId);
-    });
-  }
-
-  if (fiancaPaga) return null;
-
-  return (
-    <TableRow className="bg-amber-50">
-      <TableCell colSpan={3} className="font-medium">
-        Pagar Fiança ({formatCurrency(fiancaValor)}) + 1ª Mensalidade
-      </TableCell>
-      <TableCell>
-        <Button
-          size="sm"
-          onClick={handlePagarFianca}
-          disabled={isPending}
-          className="bg-green-600 hover:bg-green-700"
-        >
-          {isPending ? "..." : "Pagar"}
+            : isFianca && !pagamento.pago
+              ? "Pagar Fiança"
+              : pagamento.pago
+                ? "Marcar Pendente"
+                : "Marcar Pago"}
         </Button>
       </TableCell>
     </TableRow>
@@ -159,11 +131,8 @@ export function PagamentosTable({
     (a, b) => a.mes_referencia.localeCompare(b.mes_referencia) || a.valor - b.valor
   );
 
-  const isCasaBox = tipoImovel && tipoImovel !== "sitio";
+  const isCasaBox = !!tipoImovel && tipoImovel !== "sitio";
   const temFianca = isCasaBox && aluguelValorSinal != null;
-  const fiancaPaga = temFianca
-    ? sorted.length > 0 && sorted[0].pago
-    : false;
 
   return (
     <div className="rounded-md border">
@@ -177,14 +146,6 @@ export function PagamentosTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {temFianca && aluguelId && !fiancaPaga && (
-            <FiancaRow
-              aluguelId={aluguelId}
-              imovelId={imovelId}
-              fiancaPaga={fiancaPaga}
-              fiancaValor={aluguelValorSinal!}
-            />
-          )}
           {sorted.length === 0 ? (
             <TableRow>
               <TableCell colSpan={4} className="text-center text-muted-foreground">
@@ -205,6 +166,8 @@ export function PagamentosTable({
                   tipoImovel
                 )}
                 imovelId={imovelId}
+                isFianca={temFianca && index === 0}
+                aluguelId={aluguelId}
               />
             ))
           )}

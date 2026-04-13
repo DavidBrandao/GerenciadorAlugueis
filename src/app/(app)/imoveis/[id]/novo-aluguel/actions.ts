@@ -19,8 +19,9 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
   const dataFim = formData.get("data_fim") as string;
   const valorTotal = parseFloat(formData.get("valor_total") as string);
   const temSinal = formData.get("tem_sinal") === "true";
+  const valorSinalRaw = formData.get("valor_sinal") as string | null;
   const valorSinal = temSinal
-    ? parseFloat(formData.get("valor_sinal") as string)
+    ? (valorSinalRaw ? parseFloat(valorSinalRaw) || 0 : 0)
     : null;
 
   // Validate dates
@@ -146,16 +147,7 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
       });
     }
   } else {
-    // mensal: fiança record if applicable, then one record per month
-    if (valorSinal) {
-      pagamentos.push({
-        aluguel_id: aluguel!.id,
-        mes_referencia: dataInicio,
-        valor: valorSinal,
-        pago: false,
-      });
-    }
-
+    // mensal: one record per month (fiança is just a flag, no separate record)
     const start = new Date(dataInicio + "T00:00:00");
     const end = new Date(dataFim + "T00:00:00");
     const current = new Date(start.getFullYear(), start.getMonth(), 1);

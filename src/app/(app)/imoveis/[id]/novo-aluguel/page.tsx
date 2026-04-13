@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { criarAluguel } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import { CalendarioMensal } from "@/components/calendario/calendario-mensal";
@@ -30,10 +29,29 @@ export default function NovoAluguelPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Monetary fields
+  const [valorTotal, setValorTotal] = useState("");
+  const [valorSinal, setValorSinal] = useState("");
+
   // Masked fields
   const [cpf, setCpf] = useState("");
   const [rg, setRg] = useState("");
   const [telefone, setTelefone] = useState("");
+
+  function maskCurrency(v: string): string {
+    const digits = v.replace(/\D/g, "");
+    if (!digits) return "";
+    const cents = parseInt(digits, 10);
+    return (cents / 100).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function parseCurrency(v: string): number {
+    if (!v) return 0;
+    return parseFloat(v.replace(/\./g, "").replace(",", ".")) || 0;
+  }
 
   function maskCpf(v: string) {
     const digits = v.replace(/\D/g, "").slice(0, 11);
@@ -66,14 +84,31 @@ export default function NovoAluguelPage() {
   const rgValido = rg.replace(/\D/g, "").length === 7;
   const telefoneValido = telefone.replace(/\D/g, "").length >= 10;
 
-  // Prevent accidental navigation
+  // Prevent accidental navigation (browser close/refresh + SPA back)
   useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
     };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, []);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // Intercept browser back button in SPA
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      const confirmed = window.confirm("Tem certeza que deseja sair? Os dados do cadastro serão perdidos.");
+      if (confirmed) {
+        window.removeEventListener("popstate", handlePopState);
+        router.back();
+      } else {
+        window.history.pushState(null, "", window.location.href);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [router]);
 
   // Calendar state
   const hoje = new Date();
@@ -254,11 +289,17 @@ export default function NovoAluguelPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href={`/imoveis/${imovelId}`}>
-          <Button variant="outline" size="sm">
-            ← Voltar
-          </Button>
-        </Link>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (window.confirm("Tem certeza que deseja sair? Os dados do cadastro serão perdidos.")) {
+              router.push(`/imoveis/${imovelId}`);
+            }
+          }}
+        >
+          ← Voltar
+        </Button>
         <h2 className="text-2xl font-bold">Novo Aluguel</h2>
       </div>
 
@@ -435,14 +476,12 @@ export default function NovoAluguelPage() {
               </Label>
               <Input
                 id="valor_total"
-                name="valor_total"
-                type="number"
                 inputMode="decimal"
-                step="0.01"
-                min="0"
-                required
-                placeholder="0.00"
+                placeholder="0,00"
+                value={valorTotal}
+                onChange={(e) => setValorTotal(maskCurrency(e.target.value))}
               />
+              <input type="hidden" name="valor_total" value={parseCurrency(valorTotal)} />
             </div>
 
             <div className="flex items-center gap-2">
@@ -458,21 +497,17 @@ export default function NovoAluguelPage() {
               </Label>
             </div>
 
-            {temSinal && (
+            {temSinal && tipoImovel === "sitio" && (
               <div className="space-y-2">
-                <Label htmlFor="valor_sinal">
-                  {tipoImovel === "sitio" ? "Valor do Sinal (R$)" : "Valor da Fiança (R$)"}
-                </Label>
+                <Label htmlFor="valor_sinal">Valor do Sinal (R$)</Label>
                 <Input
                   id="valor_sinal"
-                  name="valor_sinal"
-                  type="number"
                   inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  required
-                  placeholder="0.00"
+                  placeholder="0,00"
+                  value={valorSinal}
+                  onChange={(e) => setValorSinal(maskCurrency(e.target.value))}
                 />
+                <input type="hidden" name="valor_sinal" value={parseCurrency(valorSinal)} />
               </div>
             )}
           </CardContent>

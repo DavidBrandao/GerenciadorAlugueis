@@ -131,7 +131,7 @@ export function CalendarioMensal({
 
       let bg = "";
       if (paid) {
-        bg = "bg-blue-100";
+        bg = "bg-green-100";
       } else if (inContract) {
         bg = "bg-orange-100";
       }
