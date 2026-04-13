@@ -19,13 +19,14 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
   const dataFim = formData.get("data_fim") as string;
   const valorTotal = parseFloat(formData.get("valor_total") as string);
   const temSinal = formData.get("tem_sinal") === "true";
+  const valorSinalRaw = formData.get("valor_sinal") as string | null;
   const valorSinal = temSinal
-    ? parseFloat(formData.get("valor_sinal") as string)
+    ? (valorSinalRaw ? parseFloat(valorSinalRaw) || 0 : 0)
     : null;
 
   // Validate dates
   if (dataFim <= dataInicio) {
-    return { error: "Data fim deve ser posterior a data inicio" };
+    return { error: "Data fim deve ser posterior à data início" };
   }
 
   // Fetch imovel type to determine rental rules
@@ -36,7 +37,7 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
     .single();
 
   if (!imovel) {
-    return { error: "Imovel nao encontrado" };
+    return { error: "Imóvel não encontrado" };
   }
 
   if (imovel.tipo === "sitio") {
@@ -68,7 +69,7 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
       .single();
 
     if (aluguelExistente) {
-      return { error: "Este imovel ja possui um aluguel ativo" };
+      return { error: "Este imóvel já possui um aluguel ativo" };
     }
   }
 
@@ -146,7 +147,7 @@ export async function criarAluguel(imovelId: string, formData: FormData) {
       });
     }
   } else {
-    // mensal: one record per month
+    // mensal: one record per month (fiança is just a flag, no separate record)
     const start = new Date(dataInicio + "T00:00:00");
     const end = new Date(dataFim + "T00:00:00");
     const current = new Date(start.getFullYear(), start.getMonth(), 1);

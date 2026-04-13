@@ -68,7 +68,7 @@ function ExcluirButton({ aluguelId, imovelId }: { aluguelId: string; imovelId: s
         <DialogHeader>
           <DialogTitle>Excluir Aluguel</DialogTitle>
           <DialogDescription>
-            Esta acao ira excluir permanentemente o aluguel e todos os pagamentos associados. Digite a senha para confirmar.
+            Esta ação irá excluir permanentemente o aluguel e todos os pagamentos associados. Digite a senha para confirmar.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
@@ -90,7 +90,7 @@ function ExcluirButton({ aluguelId, imovelId }: { aluguelId: string; imovelId: s
             onClick={handleExcluir}
             disabled={isPending || !senha}
           >
-            {isPending ? "Excluindo..." : "Confirmar Exclusao"}
+            {isPending ? "Excluindo..." : "Confirmar Exclusão"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -109,7 +109,7 @@ export function HistoricoAlugueis({ alugueis, imovelId }: HistoricoAlugueisProps
         className="flex items-center gap-2 w-full justify-between rounded-md px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
       >
         <span className="font-semibold">
-          Historico de Alugueis ({alugueis.length})
+          Histórico de Aluguéis ({alugueis.length})
         </span>
         <ChevronDown
           className={`size-4 transition-transform ${open ? "rotate-180" : ""}`}

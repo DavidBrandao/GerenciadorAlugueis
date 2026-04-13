@@ -69,7 +69,7 @@ export function Calendario({ alugueis, feriados: feriadosProp, onMonthChange }: 
   return (
     <div className="space-y-4">
       {/* Toggle and year navigation */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div className="flex flex-col items-center gap-2">
         {/* View toggle */}
         <div className="flex rounded-lg border border-border overflow-hidden">
           <button
@@ -110,7 +110,9 @@ export function Calendario({ alugueis, feriados: feriadosProp, onMonthChange }: 
         )}
       </div>
 
-      <Legenda />
+      <div className="flex justify-center">
+        <Legenda />
+      </div>
 
       {/* Calendar content */}
       {visao === "mensal" ? (

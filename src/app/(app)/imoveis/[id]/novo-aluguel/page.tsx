@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { criarAluguel } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import { CalendarioMensal } from "@/components/calendario/calendario-mensal";
@@ -25,9 +24,91 @@ export default function NovoAluguelPage() {
   const imovelId = params.id as string;
 
   const [tipo, setTipo] = useState<"mensal" | "temporada">("mensal");
+  const [tipoImovel, setTipoImovel] = useState<string | null>(null);
   const [temSinal, setTemSinal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Monetary fields
+  const [valorTotal, setValorTotal] = useState("");
+  const [valorSinal, setValorSinal] = useState("");
+
+  // Masked fields
+  const [cpf, setCpf] = useState("");
+  const [rg, setRg] = useState("");
+  const [telefone, setTelefone] = useState("");
+
+  function maskCurrency(v: string): string {
+    const digits = v.replace(/\D/g, "");
+    if (!digits) return "";
+    const cents = parseInt(digits, 10);
+    return (cents / 100).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function parseCurrency(v: string): number {
+    if (!v) return 0;
+    return parseFloat(v.replace(/\./g, "").replace(",", ".")) || 0;
+  }
+
+  function maskCpf(v: string) {
+    const digits = v.replace(/\D/g, "").slice(0, 11);
+    return digits
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  }
+
+  function maskRg(v: string) {
+    const digits = v.replace(/\D/g, "").slice(0, 7);
+    return digits
+      .replace(/(\d{1})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2");
+  }
+
+  function maskTelefone(v: string) {
+    const digits = v.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 10) {
+      return digits
+        .replace(/(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{4})(\d)/, "$1-$2");
+    }
+    return digits
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{5})(\d)/, "$1-$2");
+  }
+
+  const cpfValido = cpf.replace(/\D/g, "").length === 11;
+  const rgValido = rg.replace(/\D/g, "").length === 7;
+  const telefoneValido = telefone.replace(/\D/g, "").length >= 10;
+
+  // Prevent accidental navigation (browser close/refresh + SPA back)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // Intercept browser back button in SPA
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      const confirmed = window.confirm("Tem certeza que deseja sair? Os dados do cadastro serão perdidos.");
+      if (confirmed) {
+        window.removeEventListener("popstate", handlePopState);
+        router.back();
+      } else {
+        window.history.pushState(null, "", window.location.href);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [router]);
 
   // Calendar state
   const hoje = new Date();
@@ -56,8 +137,11 @@ export default function NovoAluguelPage() {
         .eq("id", imovelId)
         .single();
 
-      if (imovelData && imovelData.tipo === "sitio") {
-        setTipo("temporada");
+      if (imovelData) {
+        setTipoImovel(imovelData.tipo);
+        if (imovelData.tipo === "sitio") {
+          setTipo("temporada");
+        }
       }
 
       const { data: alugueisData } = await supabase
@@ -171,7 +255,12 @@ export default function NovoAluguelPage() {
     e.preventDefault();
 
     if (!rangeStart || !rangeEnd) {
-      setError("Selecione o periodo do aluguel no calendario.");
+      setError("Selecione o período do aluguel no calendário.");
+      return;
+    }
+
+    if (!cpfValido || !rgValido || !telefoneValido) {
+      setError("Preencha CPF, RG e telefone corretamente.");
       return;
     }
 
@@ -200,11 +289,17 @@ export default function NovoAluguelPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href={`/imoveis/${imovelId}`}>
-          <Button variant="outline" size="sm">
-            ← Voltar
-          </Button>
-        </Link>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (window.confirm("Tem certeza que deseja sair? Os dados do cadastro serão perdidos.")) {
+              router.push(`/imoveis/${imovelId}`);
+            }
+          }}
+        >
+          ← Voltar
+        </Button>
         <h2 className="text-2xl font-bold">Novo Aluguel</h2>
       </div>
 
@@ -237,13 +332,32 @@ export default function NovoAluguelPage() {
                 id="cpf"
                 name="cpf"
                 required
+                inputMode="numeric"
                 placeholder="000.000.000-00"
+                value={cpf}
+                onChange={(e) => setCpf(maskCpf(e.target.value))}
+                maxLength={14}
               />
+              {cpf && !cpfValido && (
+                <p className="text-xs text-red-500">CPF incompleto</p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="rg">RG</Label>
-              <Input id="rg" name="rg" required placeholder="RG do inquilino" />
+              <Input
+                id="rg"
+                name="rg"
+                required
+                inputMode="numeric"
+                placeholder="0.000.000"
+                value={rg}
+                onChange={(e) => setRg(maskRg(e.target.value))}
+                maxLength={9}
+              />
+              {rg && !rgValido && (
+                <p className="text-xs text-red-500">RG incompleto</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -262,8 +376,15 @@ export default function NovoAluguelPage() {
                 id="telefone"
                 name="telefone"
                 required
+                inputMode="numeric"
                 placeholder="(00) 00000-0000"
+                value={telefone}
+                onChange={(e) => setTelefone(maskTelefone(e.target.value))}
+                maxLength={15}
               />
+              {telefone && !telefoneValido && (
+                <p className="text-xs text-red-500">Telefone incompleto</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -288,24 +409,28 @@ export default function NovoAluguelPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="tipo">Tipo</Label>
-              <Select
-                value={tipo}
-                onValueChange={(value) => {
-                  if (value) setTipo(value as "mensal" | "temporada");
-                }}
-              >
-                <SelectTrigger id="tipo">
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mensal">Mensal</SelectItem>
-                  <SelectItem value="temporada">Temporada</SelectItem>
-                </SelectContent>
-              </Select>
+              {tipoImovel && tipoImovel !== "sitio" ? (
+                <Input id="tipo" value="Mensal" disabled />
+              ) : (
+                <Select
+                  value={tipo}
+                  onValueChange={(value) => {
+                    if (value) setTipo(value as "mensal" | "temporada");
+                  }}
+                >
+                  <SelectTrigger id="tipo">
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="temporada">Temporada</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="space-y-3">
-              <Label>Periodo do Aluguel</Label>
+              <Label>Período do Aluguel</Label>
               <CalendarioMensal
                 mes={mes}
                 ano={ano}
@@ -351,13 +476,12 @@ export default function NovoAluguelPage() {
               </Label>
               <Input
                 id="valor_total"
-                name="valor_total"
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                placeholder="0.00"
+                inputMode="decimal"
+                placeholder="0,00"
+                value={valorTotal}
+                onChange={(e) => setValorTotal(maskCurrency(e.target.value))}
               />
+              <input type="hidden" name="valor_total" value={parseCurrency(valorTotal)} />
             </div>
 
             <div className="flex items-center gap-2">
@@ -369,22 +493,21 @@ export default function NovoAluguelPage() {
                 className="h-5 w-5 rounded border-gray-300"
               />
               <Label htmlFor="tem_sinal" className="cursor-pointer">
-                Tem sinal?
+                {tipoImovel === "sitio" ? "Tem sinal?" : "Tem fiança?"}
               </Label>
             </div>
 
-            {temSinal && (
+            {temSinal && tipoImovel === "sitio" && (
               <div className="space-y-2">
                 <Label htmlFor="valor_sinal">Valor do Sinal (R$)</Label>
                 <Input
                   id="valor_sinal"
-                  name="valor_sinal"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  required
-                  placeholder="0.00"
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={valorSinal}
+                  onChange={(e) => setValorSinal(maskCurrency(e.target.value))}
                 />
+                <input type="hidden" name="valor_sinal" value={parseCurrency(valorSinal)} />
               </div>
             )}
           </CardContent>

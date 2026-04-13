@@ -28,6 +28,7 @@ interface ImovelDetailClientProps {
     data_inicio: string;
     data_fim: string;
     tipo: "mensal" | "temporada";
+    inquilino_nome?: string;
     pagamentos: Array<{ mes_referencia: string; pago: boolean }>;
   }>;
   pagamentosSerializado: Record<string, Pagamento[]>;
@@ -91,18 +92,23 @@ export function ImovelDetailClient({
 
   return (
     <>
-      <Calendario alugueis={calendarAlugueis} />
-
-      <Separator />
+      {aluguelAtivo && (
+        <>
+          <Calendario alugueis={calendarAlugueis} />
+          <Separator />
+        </>
+      )}
 
       {aluguelAtivo ? (
         <div className="space-y-6">
-          <AluguelInfo aluguel={aluguelAtivo} imovelId={imovel.id} pagamentos={pagamentos} />
+          <AluguelInfo aluguel={aluguelAtivo} imovelId={imovel.id} pagamentos={pagamentos} tipoImovel={imovel.tipo} />
           <PagamentosTable
             pagamentos={pagamentos}
             aluguelTipo={aluguelAtivo.tipo}
             aluguelValorSinal={aluguelAtivo.valor_sinal}
             imovelId={imovel.id}
+            tipoImovel={imovel.tipo}
+            aluguelId={aluguelAtivo.id}
           />
           <Dialog>
             <DialogTrigger
@@ -120,8 +126,8 @@ export function ImovelDetailClient({
               <DialogHeader>
                 <DialogTitle>Cancelar Aluguel</DialogTitle>
                 <DialogDescription>
-                  Tem certeza? O aluguel sera cancelado e as datas liberadas.
-                  Esta acao nao pode ser desfeita.
+                  Tem certeza? O aluguel será cancelado e as datas liberadas.
+                  Esta ação não pode ser desfeita.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -136,10 +142,12 @@ export function ImovelDetailClient({
           </Dialog>
         </div>
       ) : (
-        <div className="text-center py-8 space-y-4">
+        <div className="flex flex-col items-center py-12 space-y-4">
           <p className="text-muted-foreground text-lg">Nenhum aluguel ativo</p>
-          <Link href={`/imoveis/${imovel.id}/novo-aluguel`}>
-            <Button size="lg">Novo Aluguel</Button>
+          <Link href={`/imoveis/${imovel.id}/novo-aluguel`} className="w-full max-w-md">
+            <Button size="lg" className="w-full text-lg py-6">
+              Novo Aluguel
+            </Button>
           </Link>
         </div>
       )}

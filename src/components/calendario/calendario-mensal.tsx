@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -20,6 +20,7 @@ interface Aluguel {
   data_inicio: string;
   data_fim: string;
   tipo: "mensal" | "temporada";
+  inquilino_nome?: string;
   pagamentos: Pagamento[];
 }
 
@@ -77,6 +78,7 @@ interface DayInfo {
   bg: string;
   feriado: Feriado | undefined;
   tooltipLines: string[];
+  inquilinoNome: string | null;
 }
 
 export function CalendarioMensal({
@@ -101,18 +103,23 @@ export function CalendarioMensal({
       const tooltipLines: string[] = [];
       let inContract = false;
       let paid = false;
+      let inquilinoNome: string | null = null;
 
       for (const aluguel of alugueis) {
         if (isDayInRange(date, aluguel.data_inicio, aluguel.data_fim)) {
           inContract = true;
+          if (aluguel.inquilino_nome) {
+            inquilinoNome = aluguel.inquilino_nome.split(" ")[0];
+            tooltipLines.push(`Inquilino: ${aluguel.inquilino_nome}`);
+          }
           const tipoLabel = aluguel.tipo === "mensal" ? "Mensal" : "Temporada";
           tooltipLines.push(`${tipoLabel}: ${aluguel.data_inicio} a ${aluguel.data_fim}`);
 
           if (isDayPaid(date, aluguel)) {
             paid = true;
-            tooltipLines.push("Status: Pago");
+            tooltipLines.push("Status: Reserva Paga");
           } else {
-            tooltipLines.push("Status: Pendente");
+            tooltipLines.push("Status: Reservado");
           }
         }
       }
@@ -126,10 +133,10 @@ export function CalendarioMensal({
       if (paid) {
         bg = "bg-green-100";
       } else if (inContract) {
-        bg = "bg-blue-100";
+        bg = "bg-orange-100";
       }
 
-      map.set(day, { bg, feriado: feriadoInfo, tooltipLines });
+      map.set(day, { bg, feriado: feriadoInfo, tooltipLines, inquilinoNome });
     }
 
     return map;
@@ -154,6 +161,18 @@ export function CalendarioMensal({
     if (start && end && date > start && date < end) return "middle";
     if (start && !end && date.getTime() === start.getTime()) return "start";
     return null;
+  }
+
+  const [tappedDay, setTappedDay] = useState<number | null>(null);
+
+  function handleDayTap(day: number, date: Date, hasTooltip: boolean, isInteractive: boolean) {
+    if (isInteractive) {
+      onDayClick!(date);
+      return;
+    }
+    if (hasTooltip) {
+      setTappedDay(tappedDay === day ? null : day);
+    }
   }
 
   return (
@@ -194,6 +213,11 @@ export function CalendarioMensal({
             const isDisabled = disabledDates?.(date) ?? false;
             const rangePos = isDayInSelectedRange(day);
             const isInteractive = !!onDayClick && !isDisabled;
+            const hoje = new Date();
+            const isHoje =
+              date.getDate() === hoje.getDate() &&
+              date.getMonth() === hoje.getMonth() &&
+              date.getFullYear() === hoje.getFullYear();
 
             // Build classes
             let selectionClasses = "";
@@ -209,26 +233,33 @@ export function CalendarioMensal({
 
             const interactiveClasses = isInteractive
               ? "cursor-pointer hover:ring-2 hover:ring-primary/50"
-              : "cursor-default hover:ring-1 hover:ring-border";
+              : hasTooltip
+                ? "cursor-pointer"
+                : "cursor-default";
 
             const cellContent = (
               <div
-                className={`relative aspect-square flex items-center justify-center text-sm rounded-md transition-colors ${info.bg} ${selectionClasses} ${disabledClasses} ${interactiveClasses}`}
-                onClick={isInteractive ? () => onDayClick(date) : undefined}
-                role={isInteractive ? "button" : undefined}
-                tabIndex={isInteractive ? 0 : undefined}
+                className={`relative aspect-square flex flex-col items-center justify-center text-sm rounded-md transition-colors ${info.bg} ${selectionClasses} ${disabledClasses} ${interactiveClasses} ${isHoje ? "ring-2 ring-blue-500" : ""}`}
+                onClick={() => handleDayTap(day, date, hasTooltip, isInteractive)}
+                role={isInteractive || hasTooltip ? "button" : undefined}
+                tabIndex={isInteractive || hasTooltip ? 0 : undefined}
                 onKeyDown={
                   isInteractive
                     ? (e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          onDayClick(date);
+                          onDayClick!(date);
                         }
                       }
                     : undefined
                 }
               >
-                {day}
+                {info.inquilinoNome && (
+                  <span className="text-[8px] leading-none font-medium truncate w-full text-center">
+                    {info.inquilinoNome}
+                  </span>
+                )}
+                <span>{day}</span>
                 {info.feriado && (
                   <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-yellow-400" />
                 )}
@@ -240,7 +271,7 @@ export function CalendarioMensal({
             }
 
             return (
-              <Tooltip key={day}>
+              <Tooltip key={day} open={tappedDay === day ? true : undefined}>
                 <TooltipTrigger>
                   {cellContent}
                 </TooltipTrigger>

@@ -59,18 +59,40 @@ function categorizePagamentos(
     return { sinal: null, restante: null, manuais: [...pagamentos].sort((a, b) => a.created_at.localeCompare(b.created_at)) };
   }
 
-  // Identify sinal and restante by valor + mes_referencia matching the rental start date
+  // Identify sinal and restante among pagamentos matching the rental start date
+  // Sinal is always inserted first (lower id), so sort candidates by id
   const valorRestante = aluguel.valor_total - aluguel.valor_sinal;
   let sinal: Pagamento | null = null;
   let restante: Pagamento | null = null;
   const manuais: Pagamento[] = [];
 
-  for (const p of pagamentos) {
-    if (!sinal && p.valor === aluguel.valor_sinal && p.mes_referencia === aluguel.data_inicio) {
+  // Collect candidates that match data_inicio, sorted by id (insertion order)
+  const candidates = pagamentos
+    .filter((p) => p.mes_referencia === aluguel.data_inicio)
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const usedIds = new Set<string>();
+
+  // First pass: find sinal (first candidate with matching valor)
+  for (const p of candidates) {
+    if (p.valor === aluguel.valor_sinal) {
       sinal = p;
-    } else if (!restante && p.valor === valorRestante && p.mes_referencia === aluguel.data_inicio) {
+      usedIds.add(p.id);
+      break;
+    }
+  }
+
+  // Second pass: find restante (first unused candidate with matching valor)
+  for (const p of candidates) {
+    if (!usedIds.has(p.id) && p.valor === valorRestante) {
       restante = p;
-    } else {
+      usedIds.add(p.id);
+      break;
+    }
+  }
+
+  // Everything else is manual
+  for (const p of pagamentos) {
+    if (!usedIds.has(p.id)) {
       manuais.push(p);
     }
   }
@@ -351,8 +373,8 @@ function AluguelCard({
             <DialogHeader>
               <DialogTitle>Cancelar Aluguel</DialogTitle>
               <DialogDescription>
-                Tem certeza? O aluguel sera cancelado e as datas liberadas. Esta
-                acao nao pode ser desfeita.
+                Tem certeza? O aluguel será cancelado e as datas liberadas. Esta
+                ação não pode ser desfeita.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -382,7 +404,7 @@ export function AlugueisMes({
   if (alugueisDoMes.length === 0) {
     return (
       <div className="text-center py-6">
-        <p className="text-muted-foreground">Nenhum aluguel neste mes</p>
+        <p className="text-muted-foreground">Nenhum aluguel neste mês</p>
       </div>
     );
   }
@@ -390,7 +412,7 @@ export function AlugueisMes({
   return (
     <div className="space-y-3">
       <h3 className="text-lg font-semibold">
-        Alugueis ({alugueisDoMes.length})
+        Aluguéis ({alugueisDoMes.length})
       </h3>
       {alugueisDoMes.map((aluguel) => (
         <AluguelCard

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/format";
 import type { Pagamento } from "@/lib/types";
-import { togglePagamento } from "@/app/(app)/imoveis/[id]/actions";
+import { togglePagamento, pagarFianca } from "@/app/(app)/imoveis/[id]/actions";
 import { useTransition } from "react";
 
 interface PagamentosTableProps {
@@ -20,6 +20,8 @@ interface PagamentosTableProps {
   aluguelTipo: "mensal" | "temporada";
   aluguelValorSinal: number | null;
   imovelId: string;
+  tipoImovel?: string;
+  aluguelId?: string;
 }
 
 function formatMesReferencia(
@@ -27,16 +29,22 @@ function formatMesReferencia(
   tipo: "mensal" | "temporada",
   valorSinal: number | null,
   index: number,
-  total: number
+  total: number,
+  tipoImovel?: string
 ): string {
   if (tipo === "mensal") {
     const [year, month] = mesRef.split("-");
     const monthNames = [
-      "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
+      "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
       "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
     ];
     const monthIndex = parseInt(month, 10) - 1;
-    return `${monthNames[monthIndex]} ${year}`;
+    const label = `${monthNames[monthIndex]} ${year}`;
+    // For casa/box with fiança, first mensalidade gets "(Fiança)" suffix
+    if (valorSinal != null && tipoImovel && tipoImovel !== "sitio" && index === 0) {
+      return `${label} (Fiança)`;
+    }
+    return label;
   }
 
   // temporada
@@ -46,7 +54,6 @@ function formatMesReferencia(
   if (valorSinal != null && index === total - 1) {
     return "Restante";
   }
-  // fallback for temporada without sinal
   const [year, month] = mesRef.split("-");
   return `${month}/${year}`;
 }
@@ -55,16 +62,24 @@ function PagamentoRow({
   pagamento,
   label,
   imovelId,
+  isFianca,
+  aluguelId,
 }: {
   pagamento: Pagamento;
   label: string;
   imovelId: string;
+  isFianca?: boolean;
+  aluguelId?: string;
 }) {
   const [isPending, startTransition] = useTransition();
 
   function handleToggle() {
     startTransition(async () => {
-      await togglePagamento(pagamento.id, !pagamento.pago, imovelId);
+      if (isFianca && !pagamento.pago && aluguelId) {
+        await pagarFianca(aluguelId, imovelId);
+      } else {
+        await togglePagamento(pagamento.id, !pagamento.pago, imovelId);
+      }
     });
   }
 
@@ -85,16 +100,19 @@ function PagamentoRow({
       </TableCell>
       <TableCell>
         <Button
-          variant="outline"
+          variant={isFianca && !pagamento.pago ? "default" : "outline"}
           size="sm"
           onClick={handleToggle}
           disabled={isPending}
+          className={isFianca && !pagamento.pago ? "bg-green-600 hover:bg-green-700" : ""}
         >
           {isPending
             ? "..."
-            : pagamento.pago
-              ? "Marcar Pendente"
-              : "Marcar Pago"}
+            : isFianca && !pagamento.pago
+              ? "Pagar Fiança"
+              : pagamento.pago
+                ? "Marcar Pendente"
+                : "Marcar Pago"}
         </Button>
       </TableCell>
     </TableRow>
@@ -106,20 +124,25 @@ export function PagamentosTable({
   aluguelTipo,
   aluguelValorSinal,
   imovelId,
+  tipoImovel,
+  aluguelId,
 }: PagamentosTableProps) {
   const sorted = [...pagamentos].sort(
-    (a, b) => a.mes_referencia.localeCompare(b.mes_referencia)
+    (a, b) => a.mes_referencia.localeCompare(b.mes_referencia) || a.valor - b.valor
   );
+
+  const isCasaBox = !!tipoImovel && tipoImovel !== "sitio";
+  const temFianca = isCasaBox && aluguelValorSinal != null;
 
   return (
     <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Mes/Periodo</TableHead>
+            <TableHead>Mês/Período</TableHead>
             <TableHead>Valor</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Acao</TableHead>
+            <TableHead>Ação</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -139,9 +162,12 @@ export function PagamentosTable({
                   aluguelTipo,
                   aluguelValorSinal,
                   index,
-                  sorted.length
+                  sorted.length,
+                  tipoImovel
                 )}
                 imovelId={imovelId}
+                isFianca={temFianca && index === 0}
+                aluguelId={aluguelId}
               />
             ))
           )}
