@@ -13,18 +13,18 @@ export default async function DashboardPage() {
 
   const imoveis = (imoveisData as Imovel[]) ?? [];
 
-  // Fetch all alugueis (ativos + cancelados + finalizados)
+  // Fetch all alugueis
   const { data: alugueisData } = await supabase
     .from("alugueis")
     .select("id, imovel_id, status");
 
   const aluguelIds = alugueisData?.map((a) => a.id) ?? [];
-  const aluguelImovelMap: Record<string, string> = {};
+  const aluguelMap: Record<string, { imovel_id: string; status: string }> = {};
   alugueisData?.forEach((a) => {
-    aluguelImovelMap[a.id] = a.imovel_id;
+    aluguelMap[a.id] = { imovel_id: a.imovel_id, status: a.status };
   });
 
-  let pagamentos: (Pagamento & { imovel_id: string })[] = [];
+  let pagamentos: (Pagamento & { imovel_id: string; aluguel_status: string })[] = [];
   if (aluguelIds.length > 0) {
     const { data: pagData } = await supabase
       .from("pagamentos")
@@ -34,7 +34,8 @@ export default async function DashboardPage() {
 
     pagamentos = ((pagData as Pagamento[]) ?? []).map((p) => ({
       ...p,
-      imovel_id: aluguelImovelMap[p.aluguel_id] ?? "",
+      imovel_id: aluguelMap[p.aluguel_id]?.imovel_id ?? "",
+      aluguel_status: aluguelMap[p.aluguel_id]?.status ?? "",
     }));
   }
 

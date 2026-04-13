@@ -17,14 +17,14 @@ export function Header() {
 
   return (
     <header className="border-b bg-white">
-      <div className="container mx-auto relative flex h-14 items-center justify-center px-4">
-        <nav className="flex items-center gap-1 sm:gap-4">
+      <div className="container mx-auto relative flex h-14 items-center justify-center px-2 sm:px-4">
+        <nav className="flex items-center gap-0.5 sm:gap-4">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "text-sm px-3 py-1.5 rounded-md transition-colors",
+                "text-xs sm:text-sm px-2 sm:px-3 py-1.5 rounded-md transition-colors whitespace-nowrap",
                 pathname === link.href || pathname?.startsWith(link.href + "/") || link.matchAlso?.some((p) => pathname?.startsWith(p))
                   ? "bg-gray-100 font-medium text-gray-900"
                   : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
@@ -34,7 +34,7 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <Button variant="outline" size="sm" className="absolute right-4" onClick={() => logout()}>
+        <Button variant="outline" size="sm" className="absolute right-2 sm:right-4 text-xs sm:text-sm" onClick={() => logout()}>
           Sair
         </Button>
       </div>

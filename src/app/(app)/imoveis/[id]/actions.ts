@@ -15,6 +15,8 @@ export async function togglePagamento(pagamentoId: string, pago: boolean, imovel
     .eq("id", pagamentoId);
 
   revalidatePath(`/imoveis/${imovelId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
 }
 
 export async function toggleSinal(aluguelId: string, sinalPago: boolean, imovelId: string) {
@@ -26,6 +28,8 @@ export async function toggleSinal(aluguelId: string, sinalPago: boolean, imovelI
     .eq("id", aluguelId);
 
   revalidatePath(`/imoveis/${imovelId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
 }
 
 export async function cancelarAluguel(aluguelId: string, imovelId: string) {
@@ -38,6 +42,7 @@ export async function cancelarAluguel(aluguelId: string, imovelId: string) {
 
   revalidatePath(`/imoveis/${imovelId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
 }
 
 export async function excluirAluguel(
@@ -64,6 +69,8 @@ export async function excluirAluguel(
 
   revalidatePath(`/imoveis/${imovelId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
+  revalidatePath("/relatorios");
   return {};
 }
 
@@ -184,6 +191,7 @@ export async function editarAluguel(
 
   revalidatePath(`/imoveis/${imovelId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
 }
 
 export async function pagarFianca(aluguelId: string, imovelId: string) {
@@ -208,6 +216,7 @@ export async function pagarFianca(aluguelId: string, imovelId: string) {
 
   revalidatePath(`/imoveis/${imovelId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
 }
 
 export async function quitarAluguel(aluguelId: string, imovelId: string) {
@@ -222,6 +231,7 @@ export async function quitarAluguel(aluguelId: string, imovelId: string) {
 
   revalidatePath(`/imoveis/${imovelId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
 }
 
 export async function adicionarPagamento(
@@ -241,4 +251,5 @@ export async function adicionarPagamento(
 
   revalidatePath(`/imoveis/${imovelId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
 }

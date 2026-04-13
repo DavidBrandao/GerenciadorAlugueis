@@ -271,7 +271,7 @@ export function CalendarioMensal({
             }
 
             return (
-              <Tooltip key={day} open={tappedDay === day ? true : undefined}>
+              <Tooltip key={day} open={tappedDay === day}>
                 <TooltipTrigger>
                   {cellContent}
                 </TooltipTrigger>
